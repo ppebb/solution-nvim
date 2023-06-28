@@ -1,0 +1,4 @@
+std = "lua51+vim"
+
+[lints]
+multiple_statements = "allow"
