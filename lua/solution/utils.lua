@@ -5,15 +5,15 @@ M.is_windows = vim.fn.has("win32") == 1 or vim.fn.has("win32unix") == 1
 
 M.separator = string.sub(package.config, 1, 1)
 
-function M.platformify_path(path) return path:gsub("\\", M.separator):gsub("/", M.separator) end
+function M.sanitize_path(path) return path:gsub("\\", M.separator):gsub("/", M.separator) end
 
 --- @param ... string
 --- @return string
 function M.path_combine(...)
     local args = { ... }
-    local res = M.platformify_path(args[1])
+    local res = M.sanitize_path(args[1])
     for i = 2, #args do
-        local segment = M.platformify_path(args[i])
+        local segment = M.sanitize_path(args[i])
         local rew = M.ends_with(res, M.separator)
         local ssw = M.starts_with(segment, M.separator)
 
