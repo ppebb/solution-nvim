@@ -7,7 +7,10 @@ local renderer = require("solution.explorer.renderer")
 local wininfo_per_tabpage = {}
 
 local function set_cursor_pos()
-    -- Guh
+    local row = api.nvim_win_get_cursor(M.get_winhl())[1]
+    local line = api.nvim_get_current_line()
+    local start, _ = line:find("[%a\\.]")
+    api.nvim_win_set_cursor(M.get_winhl(), { row, start - 1 })
 end
 
 local function set_win_pos_and_size(winhl)
@@ -24,7 +27,79 @@ local function set_win_pos_and_size(winhl)
     api.nvim_set_current_win(old_hl)
 end
 
-local function register_keybinds() end
+--- @return Node|ProjectFile|SolutionFile|nil
+local function get_node_under_cursor()
+    local row = api.nvim_win_get_cursor(M.get_winhl())[1]
+    local index = 2 -- start at 2 because the first line is always going to be main.sln
+
+    --- @param node Node
+    --- @return Node|nil
+    local function check_node(node)
+        if node:should_render() then
+            if row == index then
+                return node
+            elseif node.open and node.has_children then
+                index = index + 1
+                for _, child in ipairs(node:get_children()) do
+                    local grandchild = check_node(child)
+                    if grandchild then
+                        return grandchild
+                    end
+                end
+            else
+                index = index + 1
+            end
+        end
+    end
+
+    if row == 1 then
+        return main.sln
+    end
+
+    if main.sln.type == "solution" then
+        for _, project in ipairs(main.sln.projects) do
+            if row == index then
+                return project
+            end
+
+            local node = check_node(project.node)
+            if node then
+                return node
+            end
+        end
+    else
+        return check_node(main.sln.node)
+    end
+end
+
+local function open()
+    local node = get_node_under_cursor()
+    if not node then
+        return
+    end
+
+    if node.type == "project" then
+        node.node.open = not node.node.open
+    elseif node.type == "folder" or (node.type == "link" and node.has_children) then
+        node.open = not node.open
+    end
+
+    print(node.name)
+
+    M.redraw()
+end
+
+local function register_keybinds()
+    api.nvim_buf_set_keymap(M.bufnr, "n", "<CR>", "", {
+        desc = "[Solution Explorer] Open node",
+        callback = open,
+    })
+
+    api.nvim_buf_set_keymap(M.bufnr, "n", "<2-LeftMouse>", "", {
+        desc = "[Solution Explorer] Open node",
+        callback = open,
+    })
+end
 
 local function register_autocmds()
     local group = api.nvim_create_augroup("solution_explorer", { clear = true })
@@ -32,6 +107,7 @@ local function register_autocmds()
     if main.config.explorer.lock_cursor then
         api.nvim_create_autocmd("CursorMoved", {
             group = group,
+            buffer = M.bufnr,
             desc = "[Solution Explorer] Keep cursor in line with the file listing",
             callback = function() set_cursor_pos() end,
         })
@@ -67,7 +143,7 @@ function M.init()
 
     register_keybinds()
     register_autocmds()
-    -- M.redraw()
+    M.redraw()
 end
 
 function M.is_open()

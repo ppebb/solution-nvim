@@ -49,18 +49,23 @@ function M.start(path)
     end
 
     local group = api.nvim_create_augroup("solution_loading", { clear = true })
+    local function close()
+        if api.nvim_buf_is_valid(bufnr) then
+            api.nvim_buf_delete(bufnr, { force = true })
+        end
+
+        if api.nvim_win_is_valid(winhl) then
+            api.nvim_win_close(winhl, true)
+        end
+    end
+
     api.nvim_create_autocmd("WinEnter", {
         group = group,
-        callback = function()
-            if api.nvim_buf_is_valid(bufnr) then
-                api.nvim_buf_delete(bufnr, { force = true })
-            end
-
-            if api.nvim_win_is_valid(winhl) then
-                api.nvim_win_close(winhl, true)
-            end
-        end,
+        callback = close,
     })
+
+    api.nvim_buf_set_keymap(bufnr, "n", "q", "", { callback = close })
+    api.nvim_buf_set_keymap(bufnr, "n", "<ESC>", "", { callback = close })
 
     local draw_frame = function()
         if not api.nvim_buf_is_valid(bufnr) then

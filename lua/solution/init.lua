@@ -8,7 +8,7 @@ local window = require("solution.explorer.window")
 local DEFAULT = {
     explorer = {
         width = 40,
-        lock_cursor = true,
+        lock_cursor = false,
         side = "right",
         add_trailing = true,
         indent_width = 2,
@@ -16,6 +16,12 @@ local DEFAULT = {
         icons = {
             devicon_colors = true,
             symlink_arrow = " ➛ ",
+            indent_markers = {
+                enabled = true,
+                corner = "└",
+                edge = "│",
+                item = "│",
+            },
             glyphs = {
                 default = "",
                 symlink = "",
@@ -43,6 +49,7 @@ function M.init(path)
         )
     end
 
+    --- @type SolutionFile|ProjectFile
     M.sln = require("solution.solutionfile").new(path)
 
     node.init()
@@ -63,6 +70,12 @@ function M.setup(config)
                     color = "#596706",
                     cterm_color = "58",
                     name = "Csproj",
+                },
+                ["dll"] = {
+                    icon = "",
+                    color = "#6d8086",
+                    cterm_color = "66",
+                    name = "Dll",
                 },
             },
         })

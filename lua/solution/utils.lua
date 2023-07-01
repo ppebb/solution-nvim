@@ -5,7 +5,29 @@ M.is_windows = vim.fn.has("win32") == 1 or vim.fn.has("win32unix") == 1
 
 M.separator = string.sub(package.config, 1, 1)
 
-function M.platformify_path(path) return path:gsub("\\", M.separator) end
+function M.platformify_path(path) return path:gsub("\\", M.separator):gsub("/", M.separator) end
+
+--- @param ... string
+--- @return string
+function M.path_combine(...)
+    local args = { ... }
+    local res = M.platformify_path(args[1])
+    for i = 2, #args do
+        local segment = M.platformify_path(args[i])
+        local rew = M.ends_with(res, M.separator)
+        local ssw = M.starts_with(segment, M.separator)
+
+        if rew and ssw then
+            segment = segment:sub(2)
+        elseif not rew and not ssw then
+            segment = M.separator .. segment
+        end
+
+        res = res .. segment
+    end
+
+    return res
+end
 
 function M.file_exists(path)
     local f = io.open(path, "rb")
@@ -27,6 +49,7 @@ function M.file_read_all_text(path)
     return lines
 end
 
+--- @param str string
 function M.starts_with(str, start) return str:sub(1, #start) == start end
 
 function M.ends_with(str, ending) return ending == "" or str:sub(-#ending) == ending end
