@@ -2,7 +2,6 @@ local M = {}
 
 local anim = require("solution.animation")
 local node = require("solution.explorer.node")
-local renderer = require("solution.explorer.renderer")
 local window = require("solution.explorer.window")
 
 local DEFAULT = {
@@ -54,8 +53,7 @@ function M.init(path)
 
     node.init()
     window.init()
-    -- renderer.init()
-    anim.stop() -- anim.stop()
+    anim.stop()
 end
 
 function M.setup(config)
