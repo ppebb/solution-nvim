@@ -29,6 +29,16 @@ function M.path_combine(...)
     return res
 end
 
+function M.key_by(tbl, key)
+    local ret = {}
+
+    for _, element in ipairs(tbl) do
+        ret[element[key]] = element
+    end
+
+    return ret
+end
+
 function M.file_exists(path)
     local f = io.open(path, "rb")
     if f then

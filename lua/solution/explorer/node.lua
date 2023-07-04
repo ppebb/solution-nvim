@@ -4,7 +4,9 @@ M.__index = M
 local has_devicons, devicons = pcall(require, "nvim-web-devicons")
 local main
 local utils = require("solution.utils")
-local uv = vim.loop
+local uv = vim.uv or vim.loop
+local watcher = require("solution.explorer.watcher")
+local window = require("solution.explorer.window")
 
 --- @return string, string
 local function get_file_icon_default(_)
@@ -74,6 +76,7 @@ end
 --- @field get_icon function
 --- @field get_text function
 --- @field should_render function
+--- @field refresh function
 --- @param absolute_path string
 --- @param parent Node|nil
 --- @param name string
@@ -102,13 +105,13 @@ function M.new_folder(absolute_path, parent, name)
     local handle = uv.fs_scandir(absolute_path)
 
     self.name = name
-    self.type = "folder"
+    self.type = "directory"
     self.path = absolute_path
     self.has_children = handle and uv.fs_scandir_next(handle) ~= nil
     self.children = nil
     self.open = false
     self.parent = parent
-    self.watcher = nil
+    self.watcher = watcher.new(self)
 
     return self
 end
@@ -133,7 +136,7 @@ function M.new_symlink(absolute_path, parent, name)
         self.has_children = handle and uv.fs_scandir_next(handle) ~= nil
         self.children = nil
         self.open = false
-        self.watcher = nil
+        self.watcher = watcher.new(self)
     end
 
     return self
@@ -171,7 +174,7 @@ end
 function M:get_text()
     if self.type == "file" then
         return self.name, "SolutionExplorerFileName"
-    elseif self.type == "folder" then
+    elseif self.type == "directory" then
         return self.name .. M.separator, "SolutionExplorerFolderName"
     else
         return self.name .. main.config.explorer.icons.symlink_arrow .. self.real_path, "SolutionExplorerLinkName"
@@ -187,9 +190,8 @@ function M:get_children()
     return self.children
 end
 
---- @param self Node
 function M:populate_children()
-    if self.type ~= "folder" and not (self.type == "link" and self.has_children) then
+    if self.type ~= "directory" and not (self.type == "link" and self.has_children) then
         return
     end
 
@@ -205,10 +207,10 @@ function M:populate_children()
             break
         end
 
-        local absolute_path = utils.path_combine(self.path, name)
-        type = type or (uv.fs_stat(dir) or {}).type
+        local absolute_path = utils.path_combine(dir, name)
+        type = type or (uv.fs_stat(absolute_path) or {}).type
         local child = nil
-        if type == "directory" and uv.fs_access(dir, "R") then
+        if type == "directory" and uv.fs_access(absolute_path, "R") then
             child = M.new_folder(absolute_path, self, name)
         elseif type == "file" then
             child = M.new_file(absolute_path, self, name)
@@ -227,8 +229,12 @@ function M:populate_children()
         end
     end
 
+    self:sort_children()
+end
+
+function M:sort_children()
     table.sort(self.children, function(a, b)
-        local function is_folder(node) return node.type == "folder" or (node.type == "link" and node.has_children) end
+        local function is_folder(node) return node.type == "directory" or (node.type == "link" and node.has_children) end
 
         if is_folder(a) and not is_folder(b) then
             return true
@@ -247,6 +253,79 @@ end
 function M:should_render()
     local ext = vim.fn.fnamemodify(self.path, ":e")
     return not (ext == ".csproj" or self.name == "obj" or self.name == "bin")
+end
+
+function M:remove_child(name)
+    local children = self:get_children()
+    if not children then
+        return
+    end
+
+    for i = 1, #children do
+        if children[i] and children[i].name == name then
+            table.remove(self.children, i)
+        end
+    end
+end
+
+function M:refresh()
+    local handle = uv.fs_scandir(self.path)
+    if not handle then
+        return
+    end
+
+    local nodes_by_path = utils.key_by(self:get_children(), "path")
+    local names = {}
+
+    while true do
+        local name, type = uv.fs_scandir_next(handle)
+        if not name then
+            break
+        end
+
+        names[name] = true
+        local absolute_path = utils.path_combine(self.path, name)
+        type = type or (uv.fs_stat(absolute_path) or {}).type
+        if nodes_by_path[absolute_path] then
+            local node = nodes_by_path[absolute_path]
+            if node.type ~= type then
+                self:remove_child(name)
+                nodes_by_path[absolute_path] = nil
+            end
+        end
+
+        if not nodes_by_path[absolute_path] then
+            local new_node
+
+            if type == "directory" and uv.fs_access(absolute_path, "R") then
+                new_node = M.new_folder(absolute_path, self, name)
+            elseif type == "file" then
+                new_node = M.new_file(absolute_path, self, name)
+            elseif type == "link" then
+                local link = M.new_symlink(absolute_path, self, name)
+                if link.real_path ~= nil then
+                    new_node = link
+                end
+            end
+
+            if new_node then
+                table.insert(self.children, new_node)
+            end
+        else
+            local node = nodes_by_path[absolute_path]
+            if node and node.type == "file" then
+                node.executable = is_executable(absolute_path)
+            end
+        end
+    end
+
+    self.children = vim.tbl_filter(function(n)
+        return names[n.name] or false
+    end, self.children)
+
+    self:sort_children()
+
+    vim.schedule(window.redraw)
 end
 
 return M

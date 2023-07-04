@@ -1,5 +1,6 @@
 local M = {}
 
+local actions = require("solution.explorer.actions")
 local api = vim.api
 local main
 local renderer = require("solution.explorer.renderer")
@@ -27,77 +28,15 @@ local function set_win_pos_and_size(winhl)
     api.nvim_set_current_win(old_hl)
 end
 
---- @return Node|ProjectFile|SolutionFile|nil
-local function get_node_under_cursor()
-    local row = api.nvim_win_get_cursor(M.get_winhl())[1]
-    local index = 2 -- start at 2 because the first line is always going to be main.sln
-
-    --- @param node Node
-    --- @return Node|nil
-    local function check_node(node)
-        if node:should_render() then
-            if row == index then
-                return node
-            elseif node.open and node.has_children then
-                index = index + 1
-                for _, child in ipairs(node:get_children()) do
-                    local grandchild = check_node(child)
-                    if grandchild then
-                        return grandchild
-                    end
-                end
-            else
-                index = index + 1
-            end
-        end
-    end
-
-    if row == 1 then
-        return main.sln
-    end
-
-    if main.sln.type == "solution" then
-        for _, project in ipairs(main.sln.projects) do
-            if row == index then
-                return project
-            end
-
-            local node = check_node(project.node)
-            if node then
-                return node
-            end
-        end
-    else
-        return check_node(main.sln.node)
-    end
-end
-
-local function open()
-    local node = get_node_under_cursor()
-    if not node then
-        return
-    end
-
-    if node.type == "project" then
-        node.node.open = not node.node.open
-    elseif node.type == "folder" or (node.type == "link" and node.has_children) then
-        node.open = not node.open
-    end
-
-    print(node.name)
-
-    M.redraw()
-end
-
 local function register_keybinds()
     api.nvim_buf_set_keymap(M.bufnr, "n", "<CR>", "", {
         desc = "[Solution Explorer] Open node",
-        callback = open,
+        callback = actions.open,
     })
 
     api.nvim_buf_set_keymap(M.bufnr, "n", "<2-LeftMouse>", "", {
         desc = "[Solution Explorer] Open node",
-        callback = open,
+        callback = actions.open,
     })
 end
 
@@ -127,6 +66,7 @@ end
 
 function M.init()
     main = require("solution")
+    require("solution.explorer.actions").init()
     local buf_opts = {
         swapfile = false,
         buftype = "nofile",

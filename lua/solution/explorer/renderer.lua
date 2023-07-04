@@ -1,8 +1,6 @@
 local M = {}
 M.__index = M
 
-local node = require("solution.explorer.node")
-
 --- @class Renderer
 --- @field depth integer
 --- @field highlights table
@@ -47,7 +45,7 @@ end
 --- @param self Renderer
 --- @param project SolutionFile|ProjectFile
 local function make_project_line(self, project)
-    local icon, icon_hl = node.get_file_icon(project.path)
+    local icon, icon_hl = require("solution.explorer.node").get_file_icon(project.path)
     local indent_padding = string.rep(" ", self.depth * self.indent_width)
     self:insert_line(indent_padding .. icon .. self.icon_padding .. project.name)
     local hl_offset = #indent_padding + #icon
