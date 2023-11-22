@@ -1,5 +1,7 @@
 local M = {}
 
+local uv = vim.uv or vim.loop
+
 M.is_wsl = vim.fn.has("wsl") == 1
 M.is_windows = vim.fn.has("win32") == 1 or vim.fn.has("win32unix") == 1
 
@@ -29,6 +31,14 @@ function M.path_combine(...)
     return res
 end
 
+function M.add_trailing_separator(path)
+    if path:find(M.separator .. "$") then
+        return path
+    else
+        return path .. M.separator
+    end
+end
+
 function M.key_by(tbl, key)
     local ret = {}
 
@@ -40,11 +50,8 @@ function M.key_by(tbl, key)
 end
 
 function M.file_exists(path)
-    local f = io.open(path, "rb")
-    if f then
-        f:close()
-    end
-    return f ~= nil
+    local _, e = uv.fs_stat(path)
+    return not e
 end
 
 function M.file_read_all_text(path)

@@ -41,16 +41,6 @@ function M.init()
     main = require("solution")
     if has_devicons then
         M.get_file_icon = get_file_icon_devicon
-        devicons.setup({
-            override_by_extension = {
-                ["csproj"] = {
-                    icon = "",
-                    color = "#596706",
-                    cterm_color = "58",
-                    name = "Csproj",
-                },
-            },
-        })
     else
         M.get_file_icon = get_file_icon_default
     end
@@ -319,9 +309,7 @@ function M:refresh()
         end
     end
 
-    self.children = vim.tbl_filter(function(n)
-        return names[n.name] or false
-    end, self.children)
+    self.children = vim.tbl_filter(function(n) return names[n.name] or false end, self.children)
 
     self:sort_children()
 

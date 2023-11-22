@@ -63,18 +63,18 @@ function M.setup(config)
     if has_devicons then
         devicons.setup({
             override_by_extension = {
-                ["csproj"] = {
-                    icon = "",
-                    color = "#596706",
-                    cterm_color = "58",
-                    name = "Csproj",
-                },
-                ["dll"] = {
-                    icon = "",
-                    color = "#6d8086",
-                    cterm_color = "66",
-                    name = "Dll",
-                },
+                -- ["csproj"] = {
+                --     icon = "",
+                --     color = "#596706",
+                --     cterm_color = "58",
+                --     name = "Csproj",
+                -- },
+                -- ["dll"] = {
+                --     icon = "",
+                --     color = "#6d8086",
+                --     cterm_color = "66",
+                --     name = "Dll",
+                -- },
             },
         })
     end

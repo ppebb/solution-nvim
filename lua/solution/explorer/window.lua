@@ -29,15 +29,13 @@ local function set_win_pos_and_size(winhl)
 end
 
 local function register_keybinds()
-    api.nvim_buf_set_keymap(M.bufnr, "n", "<CR>", "", {
-        desc = "[Solution Explorer] Open node",
-        callback = actions.open,
-    })
+    local function normal(lhs, desc, cb) api.nvim_buf_set_keymap(M.bufnr, "n", lhs, "", { desc = desc, callback = cb }) end
 
-    api.nvim_buf_set_keymap(M.bufnr, "n", "<2-LeftMouse>", "", {
-        desc = "[Solution Explorer] Open node",
-        callback = actions.open,
-    })
+    normal("q", "[Solution Explorer] Quit menu", M.toggle)
+    normal("<ESC>", "[Solution Explorer] Quit menu", M.toggle)
+    normal("<CR>", "[Solution Explorer] Open node", actions.open)
+    normal("<2-LeftMouse>", "[Solution Explorer] Open node", actions.open)
+    normal("a", "[Solution Explorer] New file", actions.new)
 end
 
 local function register_autocmds()
