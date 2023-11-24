@@ -1,11 +1,8 @@
 local M = {}
 
-M.is_wsl = vim.fn.has("wsl") == 1
-M.is_windows = vim.fn.has("win32") == 1 or vim.fn.has("win32unix") == 1
-
 M.separator = string.sub(package.config, 1, 1)
 
-function M.sanitize_path(path) return path:gsub("\\", M.separator):gsub("/", M.separator) end
+function M.os_path(path) return path:gsub("\\", M.separator):gsub("/", M.separator) end
 
 --- @param ... string
 --- @return string
@@ -29,14 +26,17 @@ function M.path_combine(...)
     return res
 end
 
-function M.key_by(tbl, key)
-    local ret = {}
+function M.path_root(path)
+    local path_mut = path
 
-    for _, element in ipairs(tbl) do
-        ret[element[key]] = element
+    while true do
+        local t = vim.fn.fnamemodify(path_mut, ":r")
+        if t == path_mut then
+            return t
+        else
+            path_mut = t
+        end
     end
-
-    return ret
 end
 
 function M.file_exists(path)
