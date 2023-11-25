@@ -11,7 +11,7 @@ vim.api.nvim_create_autocmd("BufEnter", {
 
         if bufname:find(".cs") or bufname:find(".csproj") or bufname:find(".sln") then
             vim.g.in_solution = 1
-            require("solution").init(arg)
+            require("solution").init(bufname)
             return true -- delete the autocmd. Maybe I could support multiple solutions later but I'd prefer not to deal with that.
         end
     end,

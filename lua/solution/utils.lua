@@ -8,9 +8,9 @@ function M.os_path(path) return path:gsub("\\", M.separator):gsub("/", M.separat
 --- @return string
 function M.path_combine(...)
     local args = { ... }
-    local res = M.sanitize_path(args[1])
+    local res = M.os_path(args[1])
     for i = 2, #args do
-        local segment = M.sanitize_path(args[i])
+        local segment = M.os_path(args[i])
         local rew = M.ends_with(res, M.separator)
         local ssw = M.starts_with(segment, M.separator)
 
@@ -30,7 +30,7 @@ function M.path_root(path)
     local path_mut = path
 
     while true do
-        local t = vim.fn.fnamemodify(path_mut, ":r")
+        local t = vim.fn.fnamemodify(path_mut, ":h")
         if t == path_mut then
             return t
         else
@@ -59,7 +59,6 @@ function M.file_read_all_text(path)
     return lines
 end
 
---- @param str string
 function M.starts_with(str, start) return str:sub(1, #start) == start end
 
 function M.ends_with(str, ending) return ending == "" or str:sub(-#ending) == ending end
