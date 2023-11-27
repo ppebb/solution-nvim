@@ -11,7 +11,7 @@ end
 function M.setup(config)
     M.config = vim.tbl_deep_extend("force", DEFAULT, config or {})
 
-    if not config.icons then
+    if not M.config.icons then
         return
     end
 

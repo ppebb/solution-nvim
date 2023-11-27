@@ -9,7 +9,6 @@ local utils = require("solution.utils")
 --- @field path string
 --- @field text string
 --- @field type string
---- @field node Node
 --- @param path string
 function M.new_from_file(path)
     local self = {}
@@ -19,7 +18,6 @@ function M.new_from_file(path)
     self.path = path
     self.text = utils.file_read_all_text(path)
     self.type = "project"
-    self.node = require("solution.explorer.node").new_folder(self.root, nil, self.name)
 
     return setmetatable(self, M)
 end
@@ -76,7 +74,6 @@ function M:parse_first_project_line(first_line)
     self.root = vim.fn.fnamemodify(self.path, ":p:h")
     self.text = utils.file_read_all_text(self.path)
     self.type = "project"
-    self.node = require("solution.explorer.node").new_folder(self.root, nil, self.name)
     self.project_guid = project_guid
 
     if

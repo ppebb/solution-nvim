@@ -52,58 +52,21 @@ end
 --- @param path string
 --- @return SolutionFile|ProjectFile|nil
 function M.new(path)
-    local self = setmetatable({}, M)
-
-    local path_mut = path
-    if not path_mut then
+    if not path then
         return nil
     end
+    local self = setmetatable({}, M)
 
-    local path_root = utils.path_root(path_mut)
+    local found_projects, found_solutions = utils.search_files(path)
+    print("slns " .. vim.inspect(found_solutions) .. " csproj " .. vim.inspect(found_projects))
 
-    local found_csproj = path_mut:find(".csproj") and path_mut or nil
-    local found_sln = path_mut:find(".sln") and path_mut or nil
-    if not (found_csproj or found_sln) then
-        while true do
-            path_mut = vim.fn.fnamemodify(path_mut, ":h") -- get the parent directory
-            if path_mut == path_root then
-                break
-            end
-
-            local handle = uv.fs_scandir(path_mut)
-            if not handle then
-                return nil
-            end
-
-            while true do
-                local name, type = uv.fs_scandir_next(handle)
-                if not name then
-                    break
-                end
-
-                local abs_path = utils.path_combine(path_mut, name);
-                type = type or (uv.fs_stat(abs_path) or {}).type
-
-                if type == "file" then
-                    if name:find(".csproj") then
-                        found_csproj = abs_path
-                        break
-                    elseif name:find(".sln") then
-                        found_sln = abs_path
-                        break
-                    end
-                end
-            end
-        end
-    end
-
-    if found_sln then
-        print("found slnfile " .. found_sln)
+    if found_solutions and #found_solutions > 0 then
+        local found_solution = found_solutions[1]
         -- Opened a solution file
-        self.name = vim.fn.fnamemodify(found_sln, ":t:r")
-        self.root = vim.fn.fnamemodify(found_sln, ":p:h")
-        self.path = found_sln
-        self.text = utils.file_read_all_text(found_sln)
+        self.name = vim.fn.fnamemodify(found_solution, ":t:r")
+        self.root = vim.fn.fnamemodify(found_solution, ":p:h")
+        self.path = found_solution
+        self.text = utils.file_read_all_text(found_solution)
         self.type = "solution"
         self.projects = {}
         self.current_line = 1
@@ -124,10 +87,9 @@ function M.new(path)
         end
 
         return self
-    elseif found_csproj then
-        print("found project" .. found_csproj)
+    elseif found_projects and #found_projects > 0 then
         -- Project file should probably have most of the same functions defined as a Solution file, so just pretend it's a solution
-        return require("solution.projectfile").new_from_file(found_csproj)
+        return require("solution.projectfile").new_from_file(found_projects[1])
     end
 
     return nil -- couldn't find a csproj or sln anywhere
