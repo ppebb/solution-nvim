@@ -1,7 +1,10 @@
+local xml2lua = require("xml2lua")
+local handler = require("xmlhandler.tree")
+local utils = require("solution.utils")
+local aggregate_projects = require("solution").aggregate_projects
+
 local M = {}
 M.__index = M
-
-local utils = require("solution.utils")
 
 --- @class ProjectFile
 --- @field name string
@@ -11,7 +14,11 @@ local utils = require("solution.utils")
 --- @field type string
 --- @param path string
 function M.new_from_file(path)
-    local self = {}
+    if aggregate_projects[path] then
+        return aggregate_projects[path]
+    end
+
+    local self = setmetatable({}, M)
 
     self.name = vim.fn.fnamemodify(path, ":t:r")
     self.root = vim.fn.fnamemodify(path, ":p:h")
@@ -19,7 +26,11 @@ function M.new_from_file(path)
     self.text = utils.file_read_all_text(path)
     self.type = "project"
 
-    return setmetatable(self, M)
+    self:refresh_xml()
+
+    aggregate_projects[self.path] = self
+
+    return self
 end
 
 -- Matches and extracts information from Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClassLibrary1", "ClassLibrary1\ClassLibrary1.csproj", "{05A5AD00-71B5-4612-AF2F-9EA9121C4111}"
@@ -68,12 +79,10 @@ local solution_project_type = {
 
 function M:parse_first_project_line(first_line)
     local project_type_guid, project_name, relative_path, project_guid = first_line:match(CRACK_PROJECT_LINE)
-    self.relative_path = utils.os_path(relative_path)
-    self.path = vim.fn.fnamemodify(self.relative_path, ":p")
+    relative_path = utils.os_path(relative_path)
+    self.path = vim.fn.fnamemodify(relative_path, ":p")
     self.name = project_name
     self.root = vim.fn.fnamemodify(self.path, ":p:h")
-    self.text = utils.file_read_all_text(self.path)
-    self.type = "project"
     self.project_guid = project_guid
 
     if
@@ -94,7 +103,7 @@ function M:parse_first_project_line(first_line)
     elseif project_type_guid == solution_folder_guid then
         self.project_type = solution_project_type.solution_folder
     elseif project_type_guid == vc_project_guid then
-        if utils.ends_with(self.relative_path, ".vcproj") then
+        if utils.ends_with(relative_path, ".vcproj") then
             error("ProjectUpgradeNeededToVcxProj")
         else
             self.project_type = solution_project_type.known_to_be_msbuild_format
@@ -108,15 +117,80 @@ function M:parse_first_project_line(first_line)
     end
 end
 
+function M:parse(slnfile, first_line)
+    self.type = "project"
+    self.dependencies = {}
+
+    self:parse_first_project_line(first_line)
+
+    local line
+    while true do
+        line = slnfile:read_line()
+        if not line then
+            break
+        end
+
+        if line == "EndProject" then
+            break
+        elseif utils.starts_with(line, "ProjectSection(ProjectDependencies)") then
+            line = slnfile:read_line()
+            while not utils.starts_with(line, "EndProjectSection") do
+                local _, reference_guid = line:match(CRACK_PROPERTY_LINE)
+                table.insert(self.dependencies, reference_guid)
+                line = slnfile:read_line()
+            end
+        elseif utils.starts_with(line, "ProjectSection(WebsiteProperties)") then
+            line = slnfile:read_line()
+            while not utils.starts_with(line, "EndProjectSection") do
+                local property_name, property_value = line:match(CRACK_PROPERTY_LINE)
+                -- Parse asp next compiler property...
+                line = slnfile:read_line()
+            end
+        elseif utils.starts_with(line, "ProjectSection(SolutionItems)") then
+            line = slnfile:read_line()
+            while not utils.starts_with(line, "EndProjectSection") do
+                local _, path = line:match(CRACK_PROPERTY_LINE)
+                table.insert(self.files, path)
+                line = slnfile:read_line()
+            end
+        elseif utils.starts_with(line, "Project(") then -- Malformed solution file, just continue going into the next project
+            self:parse(slnfile, line)
+            break
+        end
+    end
+
+    self:refresh_xml()
+
+    return self
+end
+
+function M:refresh_xml()
+    local h = handler:new()
+    local parser = xml2lua.parser(h)
+
+    parser:parse(table.concat(utils.file_read_all_text(self.path), "\n"))
+    self.xml = h.root
+end
+
+--- @return boolean
+function M:set_xml() return utils.file_write_all_text(self.path, xml2lua.toXml(self.xml)) end
+
 --- @class ProjectFile
 --- @field project_guid string|nil
 --- @field project_type solution_project_type
 --- @param sln SolutionFile
 --- @param first_line string
 function M.new_from_sln(sln, first_line)
+    -- TODO: Avoid reparsing the entire project entry if the project already exists
     local self = setmetatable({}, M)
 
-    self:parse_first_project_line(first_line)
+    self:parse(sln, first_line)
+
+    if aggregate_projects[self.path] then
+        return aggregate_projects[self.path]
+    end
+
+    aggregate_projects[self.path] = self
 
     return self
 end

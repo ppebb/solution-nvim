@@ -1,11 +1,52 @@
+local utils = require("solution.utils")
+
 local M = {}
+--- All solutions
+--- @type SolutionFile[]
+M.slns = {}
+--- Projects not contained within a solution
+--- @type ProjectFile[]
+M.projects = {}
+--- All projects. Populated on project creation in solution.projectfile.new...
+--- @type table<string, ProjectFile>
+M.aggregate_projects = {}
 
 local DEFAULT = {
-    icons = true
+    icons = true,
+    nuget = {
+        take = 10,
+    },
 }
 
 function M.init(path)
-    M.sln = require("solution.solutionfile").new(path)
+    if not path then
+        return
+    end
+
+    local found_solutions, found_projects = utils.search_files(path)
+
+    if not found_solutions and not found_projects then
+        return
+    end
+
+    if found_solutions then
+        for _, sln in ipairs(found_solutions) do
+            table.insert(M.slns, require("solution.solutionfile").new(sln))
+        end
+    end
+
+    -- Only includes projects that aren't owned by a solution
+    if found_projects then
+        for _, project in ipairs(found_projects) do
+            if not utils.slns_contains_project(M.slns, project) then
+                table.insert(M.projects, require("solution.projectfile").new_from_file(project))
+            end
+        end
+    end
+
+    require("solution.commands").init(M.slns, M.projects, M.aggregate_projects)
+    require("solution.nuget.api").init()
+    require("solution.nuget.ui").init(M.config)
 end
 
 function M.setup(config)

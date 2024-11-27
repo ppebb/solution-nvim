@@ -41,10 +41,12 @@ function M.path_root(path)
     end
 end
 
+--- @param path string
+--- @return string[]|nil, string[]|nil
 function M.search_files(path)
     local path_mut = vim.fn.fnamemodify(path, ":p")
     if not path_mut then
-        return nil
+        return nil, nil
     end
 
     local path_root = M.path_root(path_mut)
@@ -64,12 +66,12 @@ function M.search_files(path)
         while true do
             path_mut = vim.fn.fnamemodify(path_mut, ":h") -- get the parent directory
             if not path_mut then
-                return nil -- probably should not be returning nil here, or anywhere in this function, but oh well
+                return nil, nil -- probably should not be returning nil here, or anywhere in this function, but oh well
             end
 
             local handle = uv.fs_scandir(path_mut)
             if not handle then
-                return nil
+                return nil, nil
             end
 
             while true do
@@ -78,7 +80,7 @@ function M.search_files(path)
                     break
                 end
 
-                local abs_path = M.path_combine(path_mut, name);
+                local abs_path = M.path_combine(path_mut, name)
                 type = type or (uv.fs_stat(abs_path) or {}).type
 
                 if type == "file" then
@@ -96,9 +98,11 @@ function M.search_files(path)
         end
     end
 
-    return found_projects, found_solutions
+    return found_solutions, found_projects
 end
 
+--- @param path string
+--- @return boolean
 function M.file_exists(path)
     local f = io.open(path, "rb")
     if f then
@@ -107,6 +111,8 @@ function M.file_exists(path)
     return f ~= nil
 end
 
+--- @param path string
+--- @return string[]
 function M.file_read_all_text(path)
     if not M.file_exists(path) then
         return {}
@@ -119,10 +125,179 @@ function M.file_read_all_text(path)
     return lines
 end
 
+--- @param path string
+--- @param text string
+--- @return boolean
+function M.file_write_all_text(path, text)
+    local f = io.open(path, "w")
+    if not f then
+        return false
+    end
+
+    f:write(text)
+    f:close()
+
+    return true
+end
+
+--- @param cmd string
+--- @param args string[]
+--- @param onstdout fun(err: string?, data: string?)|nil
+--- @param onstderr fun(err: string?, data: string?)|nil
+--- @param onexit fun(code: integer, signal: integer)|nil
+function M.spawn_proc(cmd, args, onstdout, onstderr, onexit)
+    local stdout = uv.new_pipe()
+    local stderr = uv.new_pipe()
+    local handle
+    handle, _ = uv.spawn(cmd, { args = args, stdio = { nil, stdout, stderr } }, function(code, signal)
+        stdout:read_stop()
+        stderr:read_stop()
+        stdout:close()
+        stderr:close()
+        ---@diagnostic disable-next-line: need-check-nil
+        handle:close()
+
+        if onexit then
+            onexit(code, signal)
+        end
+    end)
+
+    if onstdout then
+        uv.read_start(stdout, onstdout)
+    end
+
+    if onstderr then
+        uv.read_start(stderr, onstderr)
+    end
+end
+
+--- Checks if the provided project path is present within any solution
+--- @param slns SolutionFile[]
+--- @param path string
+--- @return boolean
+function M.slns_contains_project(slns, path)
+    for _, sln in ipairs(slns) do
+        for _, project in ipairs(sln.projects) do
+            if project.path == path then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+--- @param slns SolutionFile[]
+--- @param name string
+--- @return SolutionFile|nil
+function M.sln_from_name(slns, name)
+    for _, sln in ipairs(slns) do
+        if sln.name == name then
+            return sln
+        end
+    end
+
+    return nil
+end
+
+--- @param str string
+--- @return string[]
+function M.split_by_whitespace(str)
+    local segments = {}
+    for segment in str:gmatch("%S+") do
+        table.insert(segments, segment)
+    end
+
+    return segments
+end
+
+--- @param str string
+--- @param pattern string
+--- @param n integer
+--- @param plain boolean?
+--- @return integer
+function M.nth_occurrence(str, pattern, n, plain)
+    local count = 0
+    local start = 1
+
+    while count < n do
+        local pos = str:find(pattern, start, plain)
+
+        if not pos then
+            return -1
+        end
+
+        count = count + 1
+        start = pos + 1
+
+        if count == n then
+            return pos
+        end
+    end
+
+    return -1
+end
+
+--- Returns the first element where the predicate returns true
+--- @generic T
+--- @generic U
+--- @param tbl table<T, U>
+--- @param predicate fun(key: T, value: U): boolean
+--- @return T|nil, U|nil
+function M.tbl_first_matching(tbl, predicate)
+    for key, value in pairs(tbl) do
+        if predicate(key, value) then
+            return key, value
+        end
+    end
+
+    return nil, nil
+end
+
+--- Returns the first key corresponding to the provided element
+--- @generic T
+--- @generic U
+--- @param tbl table<T, U>
+--- @return T|nil
+function M.tbl_find(tbl, element)
+    for key, value in pairs(tbl) do
+        if value == element then
+            return key
+        end
+    end
+
+    return nil
+end
+
+--- @param comp_arg1 fun(): string[]
+--- @param comp_arg2 fun(arg1: any): string[]
+function M.complete_2args(_, cmd_line, cursor_pos, comp_arg1, comp_arg2)
+    local split = M.split_by_whitespace(cmd_line)
+    local splen = #split
+
+    if splen == 1 then
+        return comp_arg1()
+    elseif splen == 2 then
+        if cursor_pos < M.nth_occurrence(cmd_line, "%s", 2) then
+            return comp_arg1()
+        else
+            return comp_arg2(split[2])
+        end
+    end
+end
+
+--- @param str string
+--- @param start string
+--- @return boolean
 function M.starts_with(str, start) return str:sub(1, #start) == start end
 
+--- @param str string
+--- @param ending string
+--- @return boolean
 function M.ends_with(str, ending) return ending == "" or str:sub(-#ending) == ending end
 
+--- @param str string
+--- @return string
 function M.trim(str) return str:match("^()%s*$") and "" or str:match("^%s*(.*%S)") end
 
 return M
