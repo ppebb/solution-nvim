@@ -66,7 +66,21 @@ local commands = {
                 return
             end
 
-            sln:remove_project(proj)
+            sln:remove_project(proj, function(success, message, code)
+                if not success then
+                    print(
+                        string.format(
+                            "Failed to remove project '%s' from solution '%s'%s%s",
+                            sln.name,
+                            proj.name,
+                            (message and ", " .. message) or "",
+                            (code and ", code: " .. code) or ""
+                        )
+                    )
+                else
+                    print(string.format("Successfully removed project '%s' from solution '%s'!", sln.name, proj.name))
+                end
+            end)
         end,
         opts = {
             nargs = "+",
@@ -109,7 +123,27 @@ local commands = {
                 proj_or_path = vim.fn.fnamemodify(proj_name, ":p")
             end
 
-            sln:add_project(proj_or_path)
+            sln:add_project(proj_or_path, function(success, message, code)
+                if not success then
+                    print(
+                        string.format(
+                            "Failed to add project '%s' to solution '%s'%s%s",
+                            sln.name,
+                            proj_or_path.name or proj_or_path,
+                            (message and ", " .. message) or "",
+                            (code and ", code: " .. code) or ""
+                        )
+                    )
+                else
+                    print(
+                        string.format(
+                            "Successfully added project '%s' to solution '%s'!",
+                            proj_or_path.name or proj_or_path,
+                            sln.name
+                        )
+                    )
+                end
+            end)
         end,
         opts = {
             nargs = "+",

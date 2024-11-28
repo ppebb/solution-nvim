@@ -102,11 +102,12 @@ end
 
 --- @param self SolutionFile
 --- @param path_or_project string|ProjectFile
-function M:add_project(path_or_project)
+--- @param cb fun(success: boolean, message: string|nil, code: integer?)
+function M:add_project(path_or_project, cb)
     local path, project = resolve_path_or_project(path_or_project)
 
     if not path then
-        print(("Error adding project '%s' to solution '%s', file does not exist!"):format(path_or_project, self.name))
+        cb(false, "file does not exist", nil)
         return
     end
 
@@ -118,37 +119,30 @@ function M:add_project(path_or_project)
         function(_, chunk) stdout_agg = stdout_agg .. (chunk or "") end,
         function(_, chunk) stderr_agg = stderr_agg .. (chunk or "") end,
         function(code)
-            if stdout_agg:find("added to the solution", 1, true) and code == 0 then
-                print(string.format("Successfully added project '%s' to the solution '%s'", path, self.name))
-
-                if project then
-                    table.insert(self.projects, project)
-                else
-                    table.insert(self.projects, require("solution.projectfile").new_from_file(path))
-                end
+            if not stdout_agg:find("added to the solution", 1, true) or code ~= 0 then
+                cb(false, (stdout_agg .. stderr_agg):gsub("\n", ""), code)
                 return
             end
 
-            print(
-                ("Error adding project '%s' to the solution '%s', message '%s', code '%s'"):format(
-                    path,
-                    self.name,
-                    (stdout_agg .. stderr_agg):gsub("\n", ""),
-                    code
-                )
-            )
+            if project then
+                table.insert(self.projects, project)
+            else
+                table.insert(self.projects, require("solution.projectfile").new_from_file(path))
+            end
+
+            cb(true, nil, nil)
         end
     )
 end
 
+--- @param self SolutionFile
 --- @param path_or_project string|ProjectFile
-function M:remove_project(path_or_project)
+--- @param cb fun(success: boolean, message: string|nil, code: integer?)
+function M:remove_project(path_or_project, cb)
     local path, project = resolve_path_or_project(path_or_project)
 
     if not path then
-        print(
-            ("Error removing project '%s' from solution '%s', file does not exist!"):format(path_or_project, self.name)
-        )
+        cb(false, "file does not exist", nil)
         return
     end
 
@@ -156,28 +150,20 @@ function M:remove_project(path_or_project)
     local stderr_agg = ""
     utils.spawn_proc(
         "dotnet",
-        { "sln", "remove", path },
-        function(_, chunk) stdout_agg = stdout_agg .. chunk end,
-        function(_, chunk) stderr_agg = stderr_agg .. chunk end,
+        { "sln", self.path, "remove", path },
+        function(_, chunk) stdout_agg = stdout_agg .. (chunk or "") end,
+        function(_, chunk) stderr_agg = stderr_agg .. (chunk or "") end,
         function(code)
-            if stdout_agg:find("added to the solution", 1, true) and code == 0 then
-                print(string.format("Successfully added project '%s' to the solution '%s'", path, self.name))
-
-                if project then
-                    table.remove(self.projects, utils.tbl_find(self.projects, project))
-                end
-
+            if not stdout_agg:find("removed from the solution", 1, true) or code ~= 0 then
+                cb(false, (stdout_agg .. stderr_agg):gsub("\n", ""), code)
                 return
             end
 
-            print(
-                ("Error adding project '%s' to the solution '%s', message '%s', code '%s'"):format(
-                    path,
-                    self.name,
-                    (stdout_agg .. stderr_agg):gsub("\n", ""),
-                    code
-                )
-            )
+            if project then
+                table.remove(self.projects, utils.tbl_find(self.projects, project))
+            end
+
+            cb(true, nil, nil)
         end
     )
 end
