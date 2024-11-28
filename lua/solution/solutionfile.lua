@@ -67,7 +67,6 @@ function M.new(path)
     self.root = vim.fn.fnamemodify(path, ":p:h")
     self.path = path
     self.text = utils.file_read_all_text(path)
-    self.type = "solution"
     self.projects = {}
     self.current_line = 1
 
