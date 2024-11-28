@@ -1,4 +1,5 @@
 local api = vim.api
+local log = require("solution.log")
 local utils = require("solution.utils")
 
 local M = {}
@@ -14,7 +15,7 @@ local _aggregate_projects
 --- @field name string
 --- @field func fun(opts: table)
 --- @field opts table?
---- @field cond fun(): boolean
+--- @field cond? fun(): boolean
 
 local function validate_sln_arg(sln_name)
     if not sln_name then
@@ -168,6 +169,10 @@ local commands = {
         },
         cond = function() return #_slns > 0 end,
     },
+    {
+        name = "SolutionLog",
+        func = function(_) vim.cmd(string.format("tabnew %s", log.log_path)) end,
+    },
 }
 
 --- @param slns SolutionFile[]
@@ -178,8 +183,8 @@ function M.init(slns, projects, aggregate_projects)
     _projects = projects
     _aggregate_projects = aggregate_projects
     for _, command in ipairs(commands) do
-        if command.cond() then
-            api.nvim_create_user_command(command.name, command.func, command.opts)
+        if not command.cond or command.cond() then
+            api.nvim_create_user_command(command.name, command.func, command.opts or {})
         end
     end
 end

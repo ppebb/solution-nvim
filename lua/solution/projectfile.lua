@@ -1,5 +1,6 @@
 local xml2lua = require("xml2lua")
 local handler = require("xmlhandler.tree")
+local log = require("solution.log")
 local utils = require("solution.utils")
 local aggregate_projects = require("solution").aggregate_projects
 
