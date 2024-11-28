@@ -163,17 +163,6 @@ function M:parse(slnfile, first_line)
     return self
 end
 
-function M:refresh_xml()
-    local h = handler:new()
-    local parser = xml2lua.parser(h)
-
-    parser:parse(table.concat(utils.file_read_all_text(self.path), "\n"))
-    self.xml = h.root
-end
-
---- @return boolean
-function M:set_xml() return utils.file_write_all_text(self.path, xml2lua.toXml(self.xml)) end
-
 --- @class ProjectFile
 --- @field project_guid string|nil
 --- @field project_type solution_project_type
@@ -193,5 +182,86 @@ function M.new_from_sln(sln, first_line)
 
     return self
 end
+
+function M:refresh_xml()
+    local h = handler:new()
+    local parser = xml2lua.parser(h)
+
+    local success = xpcall(parser.parse, function(e)
+        log.log(
+            "error",
+            string.format("Error parsing solution file '%s': %s\n%s\n", self.path, e:gsub("\n", ""), debug.traceback())
+        )
+        print(string.format("Error parsing project file '%s', see :SolutionLog for more info!", self.path))
+    end, parser, utils.remove_bom(table.concat(utils.file_read_all_text(self.path), "\n")))
+    if success then
+        self.xml = h.root
+    end
+end
+
+-- TODO: Preserve formatting of original csproj file
+
+--- @return boolean
+function M:set_xml() return utils.file_write_all_text(self.path, xml2lua.toXml(self.xml)) end
+
+--- @param package_name string
+--- @param version string
+--- @param cb fun(success: boolean, message: string|nil, code: integer?)
+function M:add_nuget_dep(package_name, version, cb)
+    local stdout_agg = ""
+    local stderr_agg = ""
+    utils.spawn_proc(
+        "dotnet",
+        { "add", self.path, "package", package_name, "--version", version },
+        function(_, chunk) stdout_agg = stdout_agg .. (chunk or "") end,
+        function(_, chunk) stderr_agg = stderr_agg .. (chunk or "") end,
+        function(code)
+            if stdout_agg:find("PackageReference for package '.*' version '.*' added to file") then
+                cb(true, "added package")
+                return
+            elseif stdout_agg:find("PackageReference for package '.*' version '.*' updated in file") then
+                cb(true, "updated package")
+                return
+            end
+
+            log.log("error", stdout_agg .. stderr_agg)
+            cb(false, "failed to add package, see :SolutionLog for more info", code)
+        end
+    )
+end
+
+--- @param path string
+--- @return boolean, string|nil
+function M:add_local_dep(path)
+    if not utils.file_exists(path) then
+        return false, "file does not exist"
+    end
+
+    local ref = {
+        HintPath = path,
+        _attr = {
+            Include = vim.fn.fnamemodify(path, ":t:r"),
+        },
+    }
+
+    if not self.xml.Project.ItemGroup then
+        self.xml.Project["ItemGroup"] = {}
+    end
+
+    -- I wrote this 3 minutes ago and already forgot what this does
+    -- This xml schema sucks
+    local k, v = utils.tbl_first_matching(self.xml.Project.ItemGroup, function(_, _v) return _v.Reference ~= nil end)
+    if not k or not v then
+        table.insert(self.xml.Project.ItemGroup, { Reference = { ref } })
+    else
+        table.insert(v.Reference, ref)
+    end
+
+    self:set_xml()
+
+    return true, nil
+end
+
+function M:add_project_reference(path_or_project) end
 
 return M

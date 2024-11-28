@@ -300,4 +300,15 @@ function M.ends_with(str, ending) return ending == "" or str:sub(-#ending) == en
 --- @return string
 function M.trim(str) return str:match("^()%s*$") and "" or str:match("^%s*(.*%S)") end
 
+--- @param str string
+--- @return string
+function M.remove_bom(str)
+    local b1, b2, b3 = str:byte(1, 3)
+    if b1 == 239 and b2 == 187 and b3 == 191 then
+        return str:sub(4)
+    end
+
+    return str
+end
+
 return M
