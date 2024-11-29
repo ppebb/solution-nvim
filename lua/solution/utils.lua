@@ -142,12 +142,16 @@ end
 
 --- @param cmd string
 --- @param args string[]
---- @param onstdout fun(err: string?, data: string?)|nil
---- @param onstderr fun(err: string?, data: string?)|nil
---- @param onexit fun(code: integer, signal: integer)|nil
+--- @param onstdout? fun(err: string?, data: string?)|nil
+--- @param onstderr? fun(err: string?, data: string?)|nil
+--- @param onexit? fun(code: integer, signal: integer, stdout_agg: string, stderr_agg: string)|nil
 function M.spawn_proc(cmd, args, onstdout, onstderr, onexit)
     local stdout = uv.new_pipe()
     local stderr = uv.new_pipe()
+
+    local stdout_agg = ""
+    local stderr_agg = ""
+
     local handle
     handle, _ = uv.spawn(cmd, { args = args, stdio = { nil, stdout, stderr } }, function(code, signal)
         stdout:read_stop()
@@ -158,17 +162,23 @@ function M.spawn_proc(cmd, args, onstdout, onstderr, onexit)
         handle:close()
 
         if onexit then
-            onexit(code, signal)
+            onexit(code, signal, stdout_agg, stderr_agg)
         end
     end)
 
-    if onstdout then
-        uv.read_start(stdout, onstdout)
-    end
+    uv.read_start(stdout, function(err, data)
+        stdout_agg = stdout_agg .. (data or "")
+        if onstdout then
+            onstdout(err, data)
+        end
+    end)
 
-    if onstderr then
-        uv.read_start(stderr, onstderr)
-    end
+    uv.read_start(stderr, function(err, data)
+        stderr_agg = stderr_agg .. (data or "")
+        if onstderr then
+            onstderr(err, data)
+        end
+    end)
 end
 
 --- Checks if the provided project path is present within any solution
@@ -198,6 +208,18 @@ function M.sln_from_name(slns, name)
     end
 
     return nil
+end
+
+function M.resolve_path_or_project(path_or_project)
+    if type(path_or_project) == "string" then
+        if not M.file_exists(path_or_project) then
+            return nil, nil
+        end
+
+        return path_or_project, require("solution").aggregate_projects[vim.fn.fnamemodify(path_or_project, ":p")]
+    else
+        return path_or_project.path, path_or_project
+    end
 end
 
 --- @param str string

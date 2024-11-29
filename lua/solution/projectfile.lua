@@ -204,18 +204,20 @@ end
 --- @return boolean
 function M:set_xml() return utils.file_write_all_text(self.path, xml2lua.toXml(self.xml)) end
 
+--- TODO: Store project references somewhere (other than in the xml table) to
+--- allow for easy removal
+
+--- @param self ProjectFile
 --- @param package_name string
 --- @param version string
 --- @param cb fun(success: boolean, message: string|nil, code: integer?)
 function M:add_nuget_dep(package_name, version, cb)
-    local stdout_agg = ""
-    local stderr_agg = ""
     utils.spawn_proc(
         "dotnet",
         { "add", self.path, "package", package_name, "--version", version },
-        function(_, chunk) stdout_agg = stdout_agg .. (chunk or "") end,
-        function(_, chunk) stderr_agg = stderr_agg .. (chunk or "") end,
-        function(code)
+        nil,
+        nil,
+        function(code, _, stdout_agg, stderr_agg)
             if stdout_agg:find("PackageReference for package '.*' version '.*' added to file") then
                 cb(true, "added package")
                 return

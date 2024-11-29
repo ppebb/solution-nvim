@@ -88,84 +88,56 @@ function M.new(path)
     return self
 end
 
-local function resolve_path_or_project(path_or_project)
-    if type(path_or_project) == "string" then
-        if not utils.file_exists(path_or_project) then
-            return nil, nil
-        end
-
-        return path_or_project, require("solution").aggregate_projects[vim.fn.fnamemodify(path_or_project, ":p")]
-    else
-        return path_or_project.path, path_or_project
-    end
-end
-
 --- @param self SolutionFile
 --- @param path_or_project string|ProjectFile
 --- @param cb fun(success: boolean, message: string|nil, code: integer?)
 function M:add_project(path_or_project, cb)
-    local path, project = resolve_path_or_project(path_or_project)
+    local path, project = utils.resolve_path_or_project(path_or_project)
 
     if not path then
         cb(false, "file does not exist", nil)
         return
     end
 
-    local stdout_agg = ""
-    local stderr_agg = ""
-    utils.spawn_proc(
-        "dotnet",
-        { "sln", self.path, "add", path },
-        function(_, chunk) stdout_agg = stdout_agg .. (chunk or "") end,
-        function(_, chunk) stderr_agg = stderr_agg .. (chunk or "") end,
-        function(code)
-            if not stdout_agg:find("added to the solution", 1, true) or code ~= 0 then
-                cb(false, (stdout_agg .. stderr_agg):gsub("\n", ""), code)
-                return
-            end
-
-            if project then
-                table.insert(self.projects, project)
-            else
-                table.insert(self.projects, require("solution.projectfile").new_from_file(path))
-            end
-
-            cb(true, nil, nil)
+    utils.spawn_proc("dotnet", { "sln", self.path, "add", path }, nil, nil, function(code, _, stdout_agg, stderr_agg)
+        if not stdout_agg:find("added to the solution", 1, true) or code ~= 0 then
+            cb(false, (stdout_agg .. stderr_agg):gsub("\n", ""), code)
+            return
         end
-    )
+
+        if project then
+            table.insert(self.projects, project)
+        else
+            table.insert(self.projects, require("solution.projectfile").new_from_file(path))
+        end
+
+        cb(true, nil, nil)
+    end)
 end
 
 --- @param self SolutionFile
 --- @param path_or_project string|ProjectFile
 --- @param cb fun(success: boolean, message: string|nil, code: integer?)
 function M:remove_project(path_or_project, cb)
-    local path, project = resolve_path_or_project(path_or_project)
+    local path, project = utils.resolve_path_or_project(path_or_project)
 
     if not path then
         cb(false, "file does not exist", nil)
         return
     end
 
-    local stdout_agg = ""
-    local stderr_agg = ""
-    utils.spawn_proc(
-        "dotnet",
-        { "sln", self.path, "remove", path },
-        function(_, chunk) stdout_agg = stdout_agg .. (chunk or "") end,
-        function(_, chunk) stderr_agg = stderr_agg .. (chunk or "") end,
-        function(code)
-            if not stdout_agg:find("removed from the solution", 1, true) or code ~= 0 then
-                cb(false, (stdout_agg .. stderr_agg):gsub("\n", ""), code)
-                return
-            end
-
-            if project then
-                table.remove(self.projects, utils.tbl_find(self.projects, project))
-            end
-
-            cb(true, nil, nil)
+    utils.spawn_proc("dotnet", { "sln", self.path, "remove", path }, nil, nil, function(code, _, stdout_agg, stderr_agg)
+        if not stdout_agg:find("removed from the solution", 1, true) or code ~= 0 then
+            cb(false, (stdout_agg .. stderr_agg):gsub("\n", ""), code)
+            return
         end
-    )
+
+        if project then
+            table.remove(self.projects, utils.tbl_find(self.projects, project))
+        end
+
+        cb(true, nil, nil)
+    end)
 end
 
 --- Returns the project matching the provided name, or nil
