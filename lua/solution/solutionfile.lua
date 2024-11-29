@@ -45,7 +45,6 @@ end
 --- @field root string
 --- @field path string
 --- @field text string
---- @field type string
 --- @field version number
 --- @field projects ProjectFile[]
 --- @field current_line integer

@@ -12,7 +12,10 @@ M.__index = M
 --- @field root string
 --- @field path string
 --- @field text string
---- @field type string
+--- @field xml table
+--- @field refresh_xml function
+--- @field set_xml function
+
 --- @param path string
 function M.new_from_file(path)
     if aggregate_projects[path] then
@@ -118,8 +121,6 @@ function M:parse_first_project_line(first_line)
 end
 
 function M:parse(slnfile, first_line)
-    self.dependencies = {}
-
     self:parse_first_project_line(first_line)
 
     local line
@@ -135,7 +136,8 @@ function M:parse(slnfile, first_line)
             line = slnfile:read_line()
             while not utils.starts_with(line, "EndProjectSection") do
                 local _, reference_guid = line:match(CRACK_PROPERTY_LINE)
-                table.insert(self.dependencies, reference_guid)
+                -- TODO: Figure out what ProjectDependencies actually are and whether this plugin needs them
+                -- table.insert(self.dependencies, reference_guid)
                 line = slnfile:read_line()
             end
         elseif utils.starts_with(line, "ProjectSection(WebsiteProperties)") then
@@ -232,6 +234,7 @@ function M:add_nuget_dep(package_name, version, cb)
     )
 end
 
+--- @param self ProjectFile
 --- @param path string
 --- @return boolean, string|nil
 function M:add_local_dep(path)
@@ -264,6 +267,31 @@ function M:add_local_dep(path)
     return true, nil
 end
 
-function M:add_project_reference(path_or_project) end
+--- @param self ProjectFile
+--- @param path_or_project string|ProjectFile
+--- @param cb fun(success: boolean, message: string|nil, code: integer?)
+function M:add_project_reference(path_or_project, cb)
+    local path, _ = utils.resolve_path_or_project(path_or_project)
+
+    if not path then
+        cb(false, "file does not exist", nil)
+        return
+    end
+
+    utils.spawn_proc(
+        "dotnet",
+        { "add", self.path, "project", path },
+        nil,
+        nil,
+        function(code, _, stdout_agg, stderr_agg)
+            if not stdout_agg:find("added to the project", 1, true) or code ~= 0 then
+                cb(false, (stdout_agg .. stderr_agg):gsub("\n", ""), code)
+                return
+            end
+
+            cb(true, nil, nil)
+        end
+    )
+end
 
 return M
