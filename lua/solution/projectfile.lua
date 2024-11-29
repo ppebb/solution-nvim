@@ -211,25 +211,50 @@ function M:set_xml() return utils.file_write_all_text(self.path, xml2lua.toXml(s
 
 --- @param self ProjectFile
 --- @param package_name string
---- @param version string
+--- @param version? string
 --- @param cb fun(success: boolean, message: string|nil, code: integer?)
 function M:add_nuget_dep(package_name, version, cb)
+    local args = { "add", self.path, "package", package_name }
+
+    if version then
+        table.insert(args, "--version")
+        table.insert(args, version)
+    end
+
+    utils.spawn_proc("dotnet", args, nil, nil, function(code, _, stdout_agg, stderr_agg)
+        if stdout_agg:find("PackageReference for package '.*' version '.*' added to file") then
+            cb(true, "added package", nil)
+            return
+        elseif stdout_agg:find("PackageReference for package '.*' version '.*' updated in file") then
+            cb(true, "updated package", nil)
+            return
+        end
+
+        log.log("error", stdout_agg .. stderr_agg)
+        cb(false, "failed to add package, see :SolutionLog for more info", code)
+    end)
+end
+
+--- @param self ProjectFile
+--- @param package_name string
+--- @param cb fun(success: boolean, message: string|nil, code: integer?)
+function M:remove_nuget_dep(package_name, cb)
+    -- TODO: check reference exists before invoking dotnet
+
     utils.spawn_proc(
         "dotnet",
-        { "add", self.path, "package", package_name, "--version", version },
+        { "remove", self.path, "package", package_name },
         nil,
         nil,
         function(code, _, stdout_agg, stderr_agg)
-            if stdout_agg:find("PackageReference for package '.*' version '.*' added to file") then
-                cb(true, "added package")
-                return
-            elseif stdout_agg:find("PackageReference for package '.*' version '.*' updated in file") then
-                cb(true, "updated package")
+            local start, _ = stdout_agg:find("error:")
+            if start or code ~= 0 then
+                log.log("error", stdout_agg .. stderr_agg)
+                cb(false, (stdout_agg:sub(start or 1) .. stderr_agg):gsub("\n", ""), code)
                 return
             end
 
-            log.log("error", stdout_agg .. stderr_agg)
-            cb(false, "failed to add package, see :SolutionLog for more info", code)
+            cb(true, nil, nil)
         end
     )
 end
@@ -268,6 +293,40 @@ function M:add_local_dep(path)
 end
 
 --- @param self ProjectFile
+--- @param dll_name string
+--- @return boolean, string|nil
+function M:remove_local_dep(dll_name)
+    if not self.xml.Project.ItemGroup then
+        return false, "missing ItemGroup"
+    end
+
+    if not self.xml.Project.ItemGroup.Reference then
+        return false, "no References"
+    end
+
+    local k, _ = utils.tbl_first_matching(
+        self.xml.Project.ItemGroup.Reference,
+        function(_, _v) return _v._attr and _v._attr.Include and _v._attr.Include:find(dll_name, 1, true) end
+    )
+
+    if not k then
+        return false, "unable to find matching dependency"
+    end
+
+    table.remove(self.xml.Project.ItemGroup.Reference, k)
+
+    if vim.tbl_count(self.xml.Project.ItemGroup.Reference) == 0 then
+        self.xml.Project.ItemGroup.Reference = nil
+    end
+
+    if vim.tbl_count(self.xml.Project.ItemGroup) == 0 then
+        self.xml.Project.ItemGroup = nil
+    end
+
+    return true, nil
+end
+
+--- @param self ProjectFile
 --- @param path_or_project string|ProjectFile
 --- @param cb fun(success: boolean, message: string|nil, code: integer?)
 function M:add_project_reference(path_or_project, cb)
@@ -280,15 +339,45 @@ function M:add_project_reference(path_or_project, cb)
 
     utils.spawn_proc(
         "dotnet",
-        { "add", self.path, "project", path },
+        { "add", self.path, "reference", path },
         nil,
         nil,
         function(code, _, stdout_agg, stderr_agg)
             if not stdout_agg:find("added to the project", 1, true) or code ~= 0 then
+                log.log("error", stdout_agg .. stderr_agg)
                 cb(false, (stdout_agg .. stderr_agg):gsub("\n", ""), code)
                 return
             end
 
+            cb(true, nil, nil)
+        end
+    )
+end
+
+--- @param self ProjectFile
+--- @param path_or_project string|ProjectFile
+--- @param cb fun(success: boolean, message: string|nil, code: integer?)
+function M:remove_project_reference(path_or_project, cb)
+    local path, _ = utils.resolve_path_or_project(path_or_project)
+
+    if not path then
+        cb(false, "file does not exist", nil)
+        return
+    end
+
+    utils.spawn_proc(
+        "dotnet",
+        { "remove", self.path, "project", path },
+        nil,
+        nil,
+        function(code, _, stdout_agg, stderr_agg)
+            if not stdout_agg:find("removed%.$") then
+                log.log("error", stdout_agg .. stderr_agg)
+                cb(false, (stdout_agg .. stderr_agg):gsub("\n", ""), code)
+                return
+            end
+
+            -- TODO: Remove from tracked dependencies
             cb(true, nil, nil)
         end
     )
