@@ -6,8 +6,6 @@ local M = {}
 
 --- @type SolutionFile[]
 local _slns
---- @type ProjectFile[]
-local _projects
 --- @type table<string, ProjectFile>
 local _aggregate_projects
 
@@ -17,69 +15,38 @@ local _aggregate_projects
 --- @field opts table?
 --- @field cond? fun(): boolean
 
-local function validate_sln_arg(sln_name)
-    if not sln_name then
-        error("A solution name must be provided as argument 1!")
-        return nil
-    end
-
-    local sln = utils.sln_from_name(_slns, sln_name)
-
-    if not sln then
-        error(string.format("No solution with name %s exists!", sln_name))
-        return nil
-    end
-
-    return sln
-end
-
---- @param sln SolutionFile
---- @param proj_name string
---- @return ProjectFile|nil
-local function validate_proj_arg(sln, proj_name)
-    if not proj_name then
-        error("A project name must be provided as argument 2!")
-        return nil
-    end
-
-    local proj = sln:project_from_name(proj_name)
-
-    if not proj then
-        error(string.format("No project with name %s was found in solution %s", proj_name, sln.name))
-        return nil
-    end
-
-    return proj
-end
-
 --- @type Command[]
 local commands = {
     {
         name = "SolutionRemoveProject",
         func = function(opts)
-            local sln = validate_sln_arg(opts.fargs[1])
-            if not sln then
-                return
-            end
+            local sln_name = assert(opts.fargs[1], "A solution name must be provided as argument 1")
+            local sln = assert(
+                utils.sln_from_name(_slns, sln_name),
+                string.format("No solution of name '%s' was found!", sln_name)
+            )
 
-            local proj = validate_proj_arg(sln, opts.fargs[2])
-            if not proj then
-                return
-            end
+            local ppn = assert(opts.fargs[2], "A project name or path must be provided as argument 2")
+            local project = assert(
+                utils.resolve_project(ppn, sln.projects),
+                string.format("Project '%s' was found in the solution!", ppn)
+            )
 
-            sln:remove_project(proj, function(success, message, code)
+            sln:remove_project(project, function(success, message, code)
                 if not success then
                     print(
                         string.format(
                             "Failed to remove project '%s' from solution '%s'%s%s",
                             sln.name,
-                            proj.name,
+                            project.name,
                             (message and ", " .. message) or "",
                             (code and ", code: " .. code) or ""
                         )
                     )
                 else
-                    print(string.format("Successfully removed project '%s' from solution '%s'!", sln.name, proj.name))
+                    print(
+                        string.format("Successfully removed project '%s' from solution '%s'!", sln.name, project.name)
+                    )
                 end
             end)
         end,
@@ -103,46 +70,31 @@ local commands = {
     {
         name = "SolutionAddProject",
         func = function(opts)
-            local sln = validate_sln_arg(opts.fargs[1])
-
-            if not sln then
-                return
-            end
-
-            local proj_name = opts.fargs[2]
-            if not proj_name then
-                error("A project name or path must be provided as argument 2!")
-                return
-            end
-
-            ---@type string|ProjectFile|nil
-            local proj_or_path = utils.tbl_first_matching(
-                _aggregate_projects,
-                function(_, v) return v.name == proj_name end
+            local sln_name = assert(opts.fargs[1], "A solution name must be provided as argument 1")
+            local sln = assert(
+                utils.sln_from_name(_slns, sln_name),
+                string.format("No solution of name '%s' was found!", sln_name)
             )
-            if not proj_or_path then
-                proj_or_path = vim.fn.fnamemodify(proj_name, ":p")
-            end
 
-            sln:add_project(proj_or_path, function(success, message, code)
+            local ppn = assert(opts.fargs[2], "A project name or path must be provided as argument 2")
+            local project = assert(
+                utils.resolve_project(ppn, sln.projects),
+                string.format("Project '%s' was found in the solution!", ppn)
+            )
+
+            sln:add_project(project, function(success, message, code)
                 if not success then
                     print(
                         string.format(
                             "Failed to add project '%s' to solution '%s'%s%s",
                             sln.name,
-                            proj_or_path.name or proj_or_path,
+                            project.name,
                             (message and ", " .. message) or "",
                             (code and ", code: " .. code) or ""
                         )
                     )
                 else
-                    print(
-                        string.format(
-                            "Successfully added project '%s' to solution '%s'!",
-                            proj_or_path.name or proj_or_path,
-                            sln.name
-                        )
-                    )
+                    print(string.format("Successfully added project '%s' to solution '%s'!", project.name, sln.name))
                 end
             end)
         end,
@@ -176,11 +128,9 @@ local commands = {
 }
 
 --- @param slns SolutionFile[]
---- @param projects ProjectFile[]
---- @param aggregate_projects ProjectFile[]
-function M.init(slns, projects, aggregate_projects)
+--- @param aggregate_projects table<string, ProjectFile>
+function M.init(slns, aggregate_projects)
     _slns = slns
-    _projects = projects
     _aggregate_projects = aggregate_projects
     for _, command in ipairs(commands) do
         if not command.cond or command.cond() then

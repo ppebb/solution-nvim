@@ -51,7 +51,6 @@ end
 --- @field read_line function
 --- @field add_project function
 --- @field remove_project function
---- @field project_from_name fun(self: SolutionFile, name: string): ProjectFile|nil
 --- @param path string
 --- @return SolutionFile|nil
 function M.new(path)
@@ -64,7 +63,7 @@ function M.new(path)
     -- Opened a solution file
     self.name = vim.fn.fnamemodify(path, ":t:r")
     self.root = vim.fn.fnamemodify(path, ":p:h")
-    self.path = path
+    self.path = vim.fn.fnamemodify(path, ":p")
     self.text = utils.file_read_all_text(path)
     self.projects = {}
     self.current_line = 1
@@ -79,7 +78,7 @@ function M.new(path)
 
         if utils.starts_with(line, "Project(") then
             local project = require("solution.projectfile").new_from_sln(self, line)
-            table.insert(self.projects, project)
+            self.projects[project.path] = project
             -- elseif -- handle additional lines
         end
     end
@@ -88,69 +87,49 @@ function M.new(path)
 end
 
 --- @param self SolutionFile
---- @param path_or_project string|ProjectFile
+--- @param project ProjectFile
 --- @param cb fun(success: boolean, message: string|nil, code: integer?)
-function M:add_project(path_or_project, cb)
-    local path, project = utils.resolve_path_or_project(path_or_project)
+function M:add_project(project, cb)
+    utils.spawn_proc(
+        "dotnet",
+        { "sln", self.path, "add", project.path },
+        nil,
+        nil,
+        function(code, _, stdout_agg, stderr_agg)
+            if not stdout_agg:find("added to the solution", 1, true) or code ~= 0 then
+                cb(false, (stdout_agg .. stderr_agg):gsub("\n", ""), code)
+                return
+            end
 
-    if not path then
-        cb(false, "file does not exist", nil)
-        return
-    end
+            self.projects[project.path] = project
 
-    utils.spawn_proc("dotnet", { "sln", self.path, "add", path }, nil, nil, function(code, _, stdout_agg, stderr_agg)
-        if not stdout_agg:find("added to the solution", 1, true) or code ~= 0 then
-            cb(false, (stdout_agg .. stderr_agg):gsub("\n", ""), code)
-            return
+            cb(true, nil, nil)
         end
-
-        if project then
-            table.insert(self.projects, project)
-        else
-            table.insert(self.projects, require("solution.projectfile").new_from_file(path))
-        end
-
-        cb(true, nil, nil)
-    end)
+    )
 end
 
 --- @param self SolutionFile
---- @param path_or_project string|ProjectFile
+--- @param project ProjectFile
 --- @param cb fun(success: boolean, message: string|nil, code: integer?)
-function M:remove_project(path_or_project, cb)
-    local path, project = utils.resolve_path_or_project(path_or_project)
+function M:remove_project(project, cb)
+    utils.spawn_proc(
+        "dotnet",
+        { "sln", self.path, "remove", project.path },
+        nil,
+        nil,
+        function(code, _, stdout_agg, stderr_agg)
+            if not stdout_agg:find("removed from the solution", 1, true) or code ~= 0 then
+                cb(false, (stdout_agg .. stderr_agg):gsub("\n", ""), code)
+                return
+            end
 
-    if not path then
-        cb(false, "file does not exist", nil)
-        return
-    end
+            if project then
+                self.projects[project.path] = nil
+            end
 
-    utils.spawn_proc("dotnet", { "sln", self.path, "remove", path }, nil, nil, function(code, _, stdout_agg, stderr_agg)
-        if not stdout_agg:find("removed from the solution", 1, true) or code ~= 0 then
-            cb(false, (stdout_agg .. stderr_agg):gsub("\n", ""), code)
-            return
+            cb(true, nil, nil)
         end
-
-        if project then
-            table.remove(self.projects, utils.tbl_find(self.projects, project))
-        end
-
-        cb(true, nil, nil)
-    end)
-end
-
---- Returns the project matching the provided name, or nil
---- @param self SolutionFile
---- @param name string
---- @return ProjectFile|nil
-function M:project_from_name(name)
-    for _, project in ipairs(self.projects) do
-        if project.name == name then
-            return project
-        end
-    end
-
-    return nil
+    )
 end
 
 return M

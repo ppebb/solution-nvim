@@ -4,9 +4,6 @@ local M = {}
 --- All solutions
 --- @type SolutionFile[]
 M.slns = {}
---- Projects not contained within a solution
---- @type ProjectFile[]
-M.projects = {}
 --- All projects. Populated on project creation in solution.projectfile.new...
 --- @type table<string, ProjectFile>
 M.aggregate_projects = {}
@@ -39,12 +36,12 @@ function M.init(path)
     if found_projects then
         for _, project in ipairs(found_projects) do
             if not utils.slns_contains_project(M.slns, project) then
-                table.insert(M.projects, require("solution.projectfile").new_from_file(project))
+                require("solution.projectfile").new_from_file(project)
             end
         end
     end
 
-    require("solution.commands").init(M.slns, M.projects, M.aggregate_projects)
+    require("solution.commands").init(M.slns, M.aggregate_projects)
     require("solution.nuget.api").init()
     require("solution.nuget.ui").init(M.config)
 end

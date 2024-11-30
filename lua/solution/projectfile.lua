@@ -26,7 +26,7 @@ function M.new_from_file(path)
 
     self.name = vim.fn.fnamemodify(path, ":t:r")
     self.root = vim.fn.fnamemodify(path, ":p:h")
-    self.path = path
+    self.path = vim.fn.fnamemodify(path, ":p")
     self.text = utils.file_read_all_text(path)
 
     self:refresh_xml()
@@ -327,19 +327,12 @@ function M:remove_local_dep(dll_name)
 end
 
 --- @param self ProjectFile
---- @param path_or_project string|ProjectFile
+--- @param project ProjectFile
 --- @param cb fun(success: boolean, message: string|nil, code: integer?)
-function M:add_project_reference(path_or_project, cb)
-    local path, _ = utils.resolve_path_or_project(path_or_project)
-
-    if not path then
-        cb(false, "file does not exist", nil)
-        return
-    end
-
+function M:add_project_reference(project, cb)
     utils.spawn_proc(
         "dotnet",
-        { "add", self.path, "reference", path },
+        { "add", self.path, "reference", project.path },
         nil,
         nil,
         function(code, _, stdout_agg, stderr_agg)
@@ -355,19 +348,12 @@ function M:add_project_reference(path_or_project, cb)
 end
 
 --- @param self ProjectFile
---- @param path_or_project string|ProjectFile
+--- @param project ProjectFile
 --- @param cb fun(success: boolean, message: string|nil, code: integer?)
-function M:remove_project_reference(path_or_project, cb)
-    local path, _ = utils.resolve_path_or_project(path_or_project)
-
-    if not path then
-        cb(false, "file does not exist", nil)
-        return
-    end
-
+function M:remove_project_reference(project, cb)
     utils.spawn_proc(
         "dotnet",
-        { "remove", self.path, "project", path },
+        { "remove", self.path, "project", project.path },
         nil,
         nil,
         function(code, _, stdout_agg, stderr_agg)

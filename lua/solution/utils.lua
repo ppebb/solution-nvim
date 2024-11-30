@@ -210,16 +210,32 @@ function M.sln_from_name(slns, name)
     return nil
 end
 
-function M.resolve_path_or_project(path_or_project)
-    if type(path_or_project) == "string" then
-        if not M.file_exists(path_or_project) then
-            return nil, nil
-        end
+--- @param ppn string The path or project name
+--- @param projects? table<string, ProjectFile> The projects table to resolve from
+--- @return ProjectFile|nil
+function M.resolve_project(ppn, projects)
+    local fpath = vim.fn.fnamemodify(ppn, ":p")
+    local _projects = projects or require("solution").aggregate_projects
 
-        return path_or_project, require("solution").aggregate_projects[vim.fn.fnamemodify(path_or_project, ":p")]
-    else
-        return path_or_project.path, path_or_project
+    if _projects[fpath] then
+        return _projects[fpath]
     end
+
+    local by_name = M.tbl_first_matching(_projects, function(_, v) return v.name == ppn end)
+    if by_name then
+        return by_name
+    end
+
+    if M.file_exists(fpath) then
+        local new = require("solution.projectfile").new_from_file(fpath)
+
+        -- Register the project, but only return it if we're not searching specifically within an array
+        if not projects then
+            return new
+        end
+    end
+
+    return nil
 end
 
 --- @param str string
