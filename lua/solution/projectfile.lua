@@ -185,29 +185,108 @@ function M.new_from_sln(sln, first_line)
     return self
 end
 
-function M:refresh_xml()
-    local h = handler:new()
-    local parser = xml2lua.parser(h)
+--- @param noread? boolean
+function M:refresh_xml(noread)
+    if not noread then
+        local h = handler:new()
+        h.options = {
+            noreduce = {
+                ItemGroup = true,
+                PackageReference = true,
+                ProjectReference = true,
+                Reference = true,
+            },
+        }
+        local parser = xml2lua.parser(h)
 
-    local success = xpcall(parser.parse, function(e)
-        log.log(
-            "error",
-            string.format("Error parsing solution file '%s': %s\n%s\n", self.path, e:gsub("\n", ""), debug.traceback())
-        )
-        print(string.format("Error parsing project file '%s', see :SolutionLog for more info!", self.path))
-    end, parser, utils.remove_bom(table.concat(utils.file_read_all_text(self.path), "\n")))
-    if success then
-        self.xml = h.root
+        local success = xpcall(parser.parse, function(e)
+            log.log(
+                "error",
+                string.format("Error parsing project file '%s': %s\n%s\n", self.path, e, debug.traceback())
+            )
+            print(string.format("Error parsing project file '%s', see :SolutionLog for more info!", self.path))
+        end, parser, utils.remove_bom(table.concat(utils.file_read_all_text(self.path), "\n")))
+
+        if success then
+            self.xml = h.root
+        else
+            return
+        end
+    end
+
+    self.dependencies = {}
+
+    if not self.xml.Project.ItemGroup then
+        return
+    end
+
+    for _, section in ipairs(self.xml.Project.ItemGroup) do
+        if section.PackageReference then
+            if #section.PackageReference == 0 then
+                table.insert(self.dependencies, {
+                    type = "Nuget",
+                    package = section.PackageReference._attr.Include,
+                    version = section.PackageReference._attr.Version,
+                })
+            else
+                for _, entry in ipairs(section.PackageReference) do
+                    table.insert(
+                        self.dependencies,
+                        { type = "Nuget", package = entry._attr.Include, version = entry._attr.Version }
+                    )
+                end
+            end
+        end
+
+        if section.ProjectReference then
+            if #section.ProjectReference == 0 then
+                table.insert(self.dependencies, {
+                    type = "Project",
+                    rel_path = section.ProjectReference._attr.Include,
+                    project = utils.resolve_project(
+                        utils.path_absolute_from_relative_to_file(
+                            self.path,
+                            utils.os_path(section.ProjectReference._attr.Include)
+                        )
+                    ),
+                })
+            else
+                for _, entry in ipairs(section.ProjectReference) do
+                    table.insert(self.dependencies, {
+                        type = "Project",
+                        rel_path = section.ProjectReference._attr.Include,
+                        project = utils.resolve_project(
+                            utils.path_absolute_from_relative_to_file(self.path, utils.os_path(entry._attr.Include))
+                        ),
+                    })
+                end
+            end
+        end
+
+        if section.Reference then
+            -- If the section exists but its length is zero, then it's not an
+            -- array but it's a single table. The table follows the same format
+            -- as each entry in the array as handled below
+            if #section.Reference == 0 then
+                table.insert(
+                    self.dependencies,
+                    { type = "Local", path = section.Reference.HintPath, include = section.Reference._attr.Include }
+                )
+            else
+                for _, entry in ipairs(section.Reference) do
+                    table.insert(
+                        self.dependencies,
+                        { type = "Local", path = entry.HintPath, include = entry._attr.Include }
+                    )
+                end
+            end
+        end
     end
 end
 
 -- TODO: Preserve formatting of original csproj file
-
 --- @return boolean
 function M:set_xml() return utils.file_write_all_text(self.path, xml2lua.toXml(self.xml)) end
-
---- TODO: Store project references somewhere (other than in the xml table) to
---- allow for easy removal
 
 --- @param self ProjectFile
 --- @param package_name string
@@ -223,9 +302,11 @@ function M:add_nuget_dep(package_name, version, cb)
 
     utils.spawn_proc("dotnet", args, nil, nil, function(code, _, stdout_agg, stderr_agg)
         if stdout_agg:find("PackageReference for package '.*' version '.*' added to file") then
+            self:refresh_xml()
             cb(true, "added package", nil)
             return
         elseif stdout_agg:find("PackageReference for package '.*' version '.*' updated in file") then
+            self:refresh_xml()
             cb(true, "updated package", nil)
             return
         end
@@ -254,6 +335,7 @@ function M:remove_nuget_dep(package_name, cb)
                 return
             end
 
+            self:refresh_xml()
             cb(true, nil, nil)
         end
     )
@@ -270,16 +352,14 @@ function M:add_local_dep(path)
     local ref = {
         HintPath = path,
         _attr = {
-            Include = vim.fn.fnamemodify(path, ":t:r"),
+            Include = vim.fn.fnamemodify(path, ":."),
         },
     }
 
     if not self.xml.Project.ItemGroup then
-        self.xml.Project["ItemGroup"] = {}
+        self.xml.Project.ItemGroup = {}
     end
 
-    -- I wrote this 3 minutes ago and already forgot what this does
-    -- This xml schema sucks
     local k, v = utils.tbl_first_matching(self.xml.Project.ItemGroup, function(_, _v) return _v.Reference ~= nil end)
     if not k or not v then
         table.insert(self.xml.Project.ItemGroup, { Reference = { ref } })
@@ -288,7 +368,7 @@ function M:add_local_dep(path)
     end
 
     self:set_xml()
-
+    self:refresh_xml(true)
     return true, nil
 end
 
@@ -300,29 +380,41 @@ function M:remove_local_dep(dll_name)
         return false, "missing ItemGroup"
     end
 
-    if not self.xml.Project.ItemGroup.Reference then
-        return false, "no References"
+    local function remove_dep()
+        for i, section in ipairs(self.xml.Project.ItemGroup) do
+            if section.Reference then
+                local idx, _ = utils.tbl_first_matching(
+                    section.Reference,
+                    function(_, _v) return _v._attr.Include:find(dll_name, 1, true) end
+                )
+
+                if idx then
+                    table.remove(section.Reference, idx)
+
+                    if vim.tbl_count(self.xml.Project.ItemGroup[i].Reference) == 0 then
+                        self.xml.Project.ItemGroup[i].Reference = nil
+                    end
+
+                    if vim.tbl_count(self.xml.Project.ItemGroup[i]) == 0 then
+                        self.xml.Project.ItemGroup[i] = nil
+                    end
+
+                    if vim.tbl_count(self.xml.Project.ItemGroup) == 0 then
+                        self.xml.Project.ItemGroup = nil
+                    end
+
+                    return true
+                end
+            end
+        end
     end
 
-    local k, _ = utils.tbl_first_matching(
-        self.xml.Project.ItemGroup.Reference,
-        function(_, _v) return _v._attr and _v._attr.Include and _v._attr.Include:find(dll_name, 1, true) end
-    )
-
-    if not k then
-        return false, "unable to find matching dependency"
+    if not remove_dep() then
+        return false, "no matching reference found"
     end
 
-    table.remove(self.xml.Project.ItemGroup.Reference, k)
-
-    if vim.tbl_count(self.xml.Project.ItemGroup.Reference) == 0 then
-        self.xml.Project.ItemGroup.Reference = nil
-    end
-
-    if vim.tbl_count(self.xml.Project.ItemGroup) == 0 then
-        self.xml.Project.ItemGroup = nil
-    end
-
+    self:set_xml()
+    self:refresh_xml(true)
     return true, nil
 end
 
@@ -342,6 +434,7 @@ function M:add_project_reference(project, cb)
                 return
             end
 
+            self:refresh_xml()
             cb(true, nil, nil)
         end
     )
@@ -363,7 +456,7 @@ function M:remove_project_reference(project, cb)
                 return
             end
 
-            -- TODO: Remove from tracked dependencies
+            self:refresh_xml()
             cb(true, nil, nil)
         end
     )

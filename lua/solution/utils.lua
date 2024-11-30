@@ -28,6 +28,15 @@ function M.path_combine(...)
     return res
 end
 
+--- @param file string
+--- @param path string Path relative to file
+--- @return string
+function M.path_absolute_from_relative_to_file(file, path)
+    local file_dir = vim.fn.fnamemodify(file, ":p:h")
+    -- Extra fnamemodify ":p" removes any redundant .. from the path
+    return vim.fn.fnamemodify(M.path_combine(file_dir, path), ":p")
+end
+
 function M.path_root(path)
     local path_mut = path
 
@@ -112,10 +121,10 @@ function M.file_exists(path)
 end
 
 --- @param path string
---- @return string[]
+--- @return string[]|nil
 function M.file_read_all_text(path)
     if not M.file_exists(path) then
-        return {}
+        return nil
     end
 
     local lines = {}
