@@ -1,4 +1,5 @@
 local utils = require("solution.utils")
+local slns = require("solution").slns
 
 local M = {}
 M.__index = M
@@ -58,12 +59,17 @@ function M.new(path)
         return nil
     end
 
+    local path_full = vim.fn.fnamemodify(path, ":p")
+    if slns[path_full] then
+        return slns[path_full]
+    end
+
     local self = setmetatable({}, M)
 
     -- Opened a solution file
     self.name = vim.fn.fnamemodify(path, ":t:r")
     self.root = vim.fn.fnamemodify(path, ":p:h")
-    self.path = vim.fn.fnamemodify(path, ":p")
+    self.path = path_full
     self.text = utils.file_read_all_text(path)
     self.projects = {}
     self.current_line = 1
@@ -83,6 +89,7 @@ function M.new(path)
         end
     end
 
+    slns[path_full] = self
     return self
 end
 

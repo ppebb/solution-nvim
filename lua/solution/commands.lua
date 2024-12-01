@@ -4,7 +4,7 @@ local utils = require("solution.utils")
 
 local M = {}
 
---- @type SolutionFile[]
+--- @type table<string, SolutionFile>
 local _slns
 --- @type table<string, ProjectFile>
 local _aggregate_projects
@@ -75,7 +75,7 @@ local commands = {
             nargs = "+",
             complete = function(arg_lead, cmd_line, cursor_pos)
                 return utils.complete_2args(arg_lead, cmd_line, cursor_pos, function()
-                    return vim.tbl_map(function(e) return e.name end, _slns)
+                    return utils.tbl_map_to_arr(_slns, function(_, e) return e.name end)
                 end, function(arg1)
                     local sln = utils.sln_from_name(_slns, arg1)
                     if sln then
@@ -86,7 +86,7 @@ local commands = {
                 end)
             end,
         },
-        cond = function() return #_slns > 0 end,
+        cond = function() return vim.tbl_count(_slns) > 0 end,
     },
     {
         name = "SolutionAddProject",
@@ -123,16 +123,16 @@ local commands = {
             nargs = "+",
             complete = function(arg_lead, cmd_line, cursor_pos)
                 return utils.complete_2args(arg_lead, cmd_line, cursor_pos, function()
-                    return vim.tbl_map(function(e) return e.name end, _slns)
+                    return utils.tbl_map_to_arr(_slns, function(_, e) return e.name end)
                 end, function(arg1)
                     local sln = utils.sln_from_name(_slns, arg1)
                     if sln then
-                        return vim.tbl_map(
-                            function(e) return e.name end,
+                        return utils.tbl_map_to_arr(
                             vim.tbl_filter(
                                 function(proj) return not vim.tbl_contains(sln.projects, proj) end,
                                 _aggregate_projects
-                            )
+                            ),
+                            function(_, e) return e.name end
                         )
                     end
 
@@ -140,7 +140,7 @@ local commands = {
                 end)
             end,
         },
-        cond = function() return #_slns > 0 end,
+        cond = function() return vim.tbl_count(_slns) > 0 end,
     },
     {
         name = "SolutionLog",
@@ -175,7 +175,7 @@ local commands = {
             nargs = "+",
             complete = function(arg_lead, cmd_line, cursor_pos)
                 return utils.complete_2args(arg_lead, cmd_line, cursor_pos, function()
-                    return vim.tbl_map(function(e) return e.name end, _aggregate_projects)
+                    return utils.tbl_map_to_arr(_aggregate_projects, function(_, e) return e.name end)
                 end, function(_)
                     -- TODO: Complete nuget packages using ???
                     return {}
@@ -292,12 +292,16 @@ local commands = {
             nargs = "+",
             complete = function(arg_lead, cmd_line, cursor_pos)
                 return utils.complete_2args(arg_lead, cmd_line, cursor_pos, function()
-                    return vim.tbl_map(function(e) return e.name end, _aggregate_projects)
+                    return utils.tbl_map_to_arr(
+                        vim.tbl_filter(function(e) return #e.dependencies > 0 end, _aggregate_projects),
+                        function(_, e) return e.name end
+                    )
                 end, function(arg1)
                     local project = utils.resolve_project(arg1)
                     if project then
+                        print(project.dependencies)
                         return {
-                            vim.tbl_map(function(e) return e.name end, project.dependencies),
+                            vim.tbl_map(function(e) return e.name end, project.dependencies) or {},
                         }
                     end
 
@@ -305,11 +309,14 @@ local commands = {
                 end)
             end,
         },
-        cond = function() return vim.tbl_count(_aggregate_projects) ~= 0 end,
+        cond = function()
+            -- One project needs to have dependencies for this to be enabled
+            return vim.tbl_count(vim.tbl_filter(function(e) return #e.dependencies > 0 end, _aggregate_projects)) ~= 0
+        end,
     },
 }
 
---- @param slns SolutionFile[]
+--- @param slns table<string, SolutionFile>
 --- @param aggregate_projects table<string, ProjectFile>
 function M.init(slns, aggregate_projects)
     _slns = slns

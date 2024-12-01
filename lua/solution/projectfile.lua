@@ -29,6 +29,7 @@ function M.new_from_file(path)
     self.root = vim.fn.fnamemodify(path, ":p:h")
     self.path = vim.fn.fnamemodify(path, ":p")
     self.text = utils.file_read_all_text(path)
+    self.dependencies = {}
 
     self:refresh_xml()
 

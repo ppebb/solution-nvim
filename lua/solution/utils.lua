@@ -191,11 +191,11 @@ function M.spawn_proc(cmd, args, onstdout, onstderr, onexit)
 end
 
 --- Checks if the provided project path is present within any solution
---- @param slns SolutionFile[]
+--- @param slns table<string, SolutionFile>
 --- @param path string
 --- @return boolean
 function M.slns_contains_project(slns, path)
-    for _, sln in ipairs(slns) do
+    for _, sln in pairs(slns) do
         for _, project in ipairs(sln.projects) do
             if project.path == path then
                 return true
@@ -206,11 +206,11 @@ function M.slns_contains_project(slns, path)
     return false
 end
 
---- @param slns SolutionFile[]
+--- @param slns table<string, SolutionFile>
 --- @param name string
 --- @return SolutionFile|nil
 function M.sln_from_name(slns, name)
-    for _, sln in ipairs(slns) do
+    for _, sln in pairs(slns) do
         if sln.name == name then
             return sln
         end
@@ -331,6 +331,22 @@ function M.complete_2args(_, cmd_line, cursor_pos, comp_arg1, comp_arg2)
             return comp_arg2(split[2])
         end
     end
+end
+
+--- @generic U
+--- @generic T
+--- @generic Z
+--- @param tbl table<U, T>
+--- @param func fun(key: U, value: T): Z
+--- @return Z[]
+function M.tbl_map_to_arr(tbl, func)
+    local ret = {}
+
+    for k, v in pairs(tbl) do
+        table.insert(ret, func(k, v))
+    end
+
+    return ret
 end
 
 --- @param str string

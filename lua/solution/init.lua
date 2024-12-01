@@ -2,7 +2,7 @@ local utils = require("solution.utils")
 
 local M = {}
 --- All solutions
---- @type SolutionFile[]
+--- @type table<string, SolutionFile>
 M.slns = {}
 --- All projects. Populated on project creation in solution.projectfile.new...
 --- @type table<string, ProjectFile>
@@ -28,7 +28,7 @@ function M.init(path)
 
     if found_solutions then
         for _, sln in ipairs(found_solutions) do
-            table.insert(M.slns, require("solution.solutionfile").new(sln))
+            require("solution.solutionfile").new(sln)
         end
     end
 
