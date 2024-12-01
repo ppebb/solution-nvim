@@ -327,8 +327,8 @@ function M.tbl_find(tbl, element)
     return nil
 end
 
---- @param comp_arg1 fun(): string[]
---- @param comp_arg2 fun(arg1: any): string[]
+--- @param comp_arg1 fun(arg1: string): string[]
+--- @param comp_arg2 fun(arg1: string, arg2: string): string[]
 function M.complete_2args(_, cmd_line, cursor_pos, comp_arg1, comp_arg2)
     local split = M.split_by_whitespace(cmd_line)
     local splen = #split
@@ -337,12 +337,12 @@ function M.complete_2args(_, cmd_line, cursor_pos, comp_arg1, comp_arg2)
     local _3rd = M.nth_occurrence(cmd_line, "[^\\]%s", 3)
 
     if splen == 1 then
-        return comp_arg1()
+        return comp_arg1(split[2])
     elseif splen > 1 and splen < 4 then
         if cursor_pos < _2nd then
-            return comp_arg1()
+            return comp_arg1(split[2])
         elseif cursor_pos < _3rd or _3rd == -1 then
-            return comp_arg2(split[2])
+            return comp_arg2(split[2], split[3])
         end
     end
 end
