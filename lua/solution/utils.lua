@@ -251,8 +251,19 @@ end
 --- @return string[]
 function M.split_by_whitespace(str)
     local segments = {}
-    for segment in str:gmatch("%S+") do
-        table.insert(segments, segment)
+
+    local old_pos = 1
+    local pos = str:find("[^\\]%s")
+
+    while pos do
+        table.insert(segments, str:sub(old_pos, pos))
+
+        old_pos = pos + 2
+        pos = str:find("[^\\]%s", pos + 2)
+    end
+
+    if old_pos < #str then
+        table.insert(segments, str:sub(old_pos))
     end
 
     return segments
@@ -322,12 +333,15 @@ function M.complete_2args(_, cmd_line, cursor_pos, comp_arg1, comp_arg2)
     local split = M.split_by_whitespace(cmd_line)
     local splen = #split
 
+    local _2nd = M.nth_occurrence(cmd_line, "[^\\]%s", 2)
+    local _3rd = M.nth_occurrence(cmd_line, "[^\\]%s", 3)
+
     if splen == 1 then
         return comp_arg1()
-    elseif splen == 2 then
-        if cursor_pos < M.nth_occurrence(cmd_line, "%s", 2) then
+    elseif splen > 1 and splen < 4 then
+        if cursor_pos < _2nd then
             return comp_arg1()
-        else
+        elseif cursor_pos < _3rd or _3rd == -1 then
             return comp_arg2(split[2])
         end
     end
