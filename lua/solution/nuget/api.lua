@@ -46,7 +46,32 @@ function M.query(query, skip, take)
     curl.easy({
         url = endpoints["SearchQueryService/3.5.0"]
             .. "?q="
-            .. ((query and query) or "")
+            .. (query or "")
+            .. ((skip and "&skip=" .. skip) or "")
+            .. ((take and "&take=" .. take) or "")
+            .. "&packageType=Dependency",
+        writefunction = function(chunk) table.insert(full_response, chunk) end,
+    })
+        :perform()
+        :close()
+
+    local decoded = vim.json.decode(table.concat(full_response))
+
+    if not decoded then
+        return 0, nil
+    end
+
+    return decoded.totalHits, decoded.data
+end
+
+--- @retrn number, table
+function M.complete(query, skip, take)
+    local full_response = {}
+
+    curl.easy({
+        url = endpoints["SearchAutocompleteService/3.5.0"]
+            .. "?q="
+            .. (query or "")
             .. ((skip and "&skip=" .. skip) or "")
             .. ((take and "&take=" .. take) or "")
             .. "&packageType=Dependency",
