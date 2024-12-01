@@ -50,7 +50,7 @@ local commands = {
             local ppn = assert(opts.fargs[2], "A project name or path must be provided as argument 2")
             local project = assert(
                 utils.resolve_project(ppn, sln.projects),
-                string.format("Project '%s' was found in the solution!", ppn)
+                string.format("Project '%s' was not found in the solution!", ppn)
             )
 
             sln:remove_project(project, function(success, message, code)
@@ -100,7 +100,7 @@ local commands = {
             local ppn = assert(opts.fargs[2], "A project name or path must be provided as argument 2")
             local project = assert(
                 utils.resolve_project(ppn, sln.projects),
-                string.format("Project '%s' was found in the solution!", ppn)
+                string.format("Project '%s' was not found in the solution!", ppn)
             )
 
             sln:add_project(project, function(success, message, code)
@@ -150,8 +150,7 @@ local commands = {
         name = "ProjectAddNugetDep",
         func = function(opts)
             local ppn = assert(opts.fargs[1], "A project name or path must be passed as argument 1")
-            local project =
-                assert(utils.resolve_project(ppn), string.format("Project '%s' was found in the solution!", ppn))
+            local project = assert(utils.resolve_project(ppn), string.format("Project '%s' could not be found!", ppn))
 
             local package_name = assert(opts.fargs[2], "A package name must be provided as argument 2")
             local package_ver = opts.fargs[3]
@@ -210,8 +209,7 @@ local commands = {
         name = "ProjectRemoveDep",
         func = function(opts)
             local ppn = assert(opts.fargs[1], "A project name or path must be passed as argument 1")
-            local project =
-                assert(utils.resolve_project(ppn), string.format("Project '%s' was found in the solution!", ppn))
+            local project = assert(utils.resolve_project(ppn), string.format("Project '%s' could not be found!", ppn))
 
             local dep_name = assert(opts.fargs[2], "A dependency name must be provided as argument 2")
             local dep =
