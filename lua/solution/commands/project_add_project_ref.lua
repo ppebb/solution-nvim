@@ -11,6 +11,8 @@ return {
         local project_ref =
             assert(utils.resolve_project(ppn_ref), string.format("Project '%s' could not be found!", ppn))
 
+        assert(project ~= project_ref, "Two different projects must be specified!")
+
         project:add_project_reference(project_ref, function(success, message, code)
             if not success then
                 print(
