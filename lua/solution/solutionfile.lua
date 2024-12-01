@@ -45,9 +45,9 @@ end
 --- @field name string
 --- @field root string
 --- @field path string
---- @field text string
+--- @field text string[]
 --- @field version number
---- @field projects ProjectFile[]
+--- @field projects table<string, ProjectFile>
 --- @field current_line integer
 --- @field read_line function
 --- @field add_project function

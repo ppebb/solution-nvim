@@ -38,7 +38,7 @@ return {
             end, function(arg1)
                 local sln = utils.sln_from_name(slns, arg1)
                 if sln then
-                    return vim.tbl_map(function(e) return e.name end, sln.projects)
+                    return utils.tbl_map_to_arr(sln.projects, function(_, e) return e.name end)
                 end
 
                 return {}

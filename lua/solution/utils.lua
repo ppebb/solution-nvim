@@ -196,7 +196,7 @@ end
 --- @return boolean
 function M.slns_contains_project(slns, path)
     for _, sln in pairs(slns) do
-        for _, project in ipairs(sln.projects) do
+        for _, project in pairs(sln.projects) do
             if project.path == path then
                 return true
             end
