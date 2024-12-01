@@ -230,7 +230,7 @@ function M.resolve_project(ppn, projects)
         return _projects[fpath]
     end
 
-    local by_name = M.tbl_first_matching(_projects, function(_, v) return v.name == ppn end)
+    local _, by_name = M.tbl_first_matching(_projects, function(_, v) return v.name == ppn end)
     if by_name then
         return by_name
     end
