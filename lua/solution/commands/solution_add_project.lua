@@ -10,18 +10,15 @@ return {
             assert(utils.sln_from_name(slns, sln_name), string.format("No solution of name '%s' was found!", sln_name))
 
         local ppn = assert(opts.fargs[2], "A project name or path must be provided as argument 2")
-        local project = assert(
-            utils.resolve_project(ppn, sln.projects),
-            string.format("Project '%s' was not found in the solution!", ppn)
-        )
+        local project = assert(utils.resolve_project(ppn), string.format("Project '%s' could not be found!", ppn))
 
         sln:add_project(project, function(success, message, code)
             if not success then
                 print(
                     string.format(
                         "Failed to add project '%s' to solution '%s'%s%s",
-                        sln.name,
                         project.name,
+                        sln.name,
                         (message and ", " .. message) or "",
                         (code and ", code: " .. code) or ""
                     )
