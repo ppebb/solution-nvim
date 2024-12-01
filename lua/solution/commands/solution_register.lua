@@ -4,16 +4,21 @@ return {
     name = "SolutionRegister",
     func = function(opts)
         local fname = assert(opts.fargs[1], "A solution or project file must be provided as argument 1")
-        local csproj = fname:find("%.csproj$")
-        local sln = fname:find("%.sln$")
-        assert(csproj or sln, "A solution or project file must be provided as argument 1")
+        local is_csproj = fname:find("%.csproj$")
+        local is_sln = fname:find("%.sln$")
+        assert(is_csproj or is_sln, "A solution or project file must be provided as argument 1")
 
         assert(utils.file_exists(fname), string.format("The file '%s' does not exist!", fname))
 
-        if csproj then
-            require("solution.projectfile").new_from_file(fname)
+        if is_csproj then
+            local project = require("solution.projectfile").new_from_file(fname)
+            print(string.format("Successfully registered project '%s' at '%s'", project.name, project.path))
         else
-            table.insert(require("solution").slns, require("solution.solutionfile").new(fname))
+            local sln = require("solution.solutionfile").new(fname)
+
+            if sln then
+                print(string.format("Successfully registered solution '%s' at '%s'", sln.name, sln.path))
+            end
         end
     end,
     opts = {
