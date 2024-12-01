@@ -274,7 +274,7 @@ local commands = {
             if dep.type == "Nuget" then
                 project:remove_nuget_dep(dep.package, response_handler)
             elseif dep.type == "Project" then
-                project:remove_project_ref(dep.project, response_handler)
+                project:remove_project_reference(dep.project, response_handler)
             elseif dep.type == "Local" then
                 project:remove_local_dep(dep.path, response_handler)
             else
