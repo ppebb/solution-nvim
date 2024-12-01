@@ -13,6 +13,7 @@ M.__index = M
 --- @field path string
 --- @field text string
 --- @field xml table
+--- @field dependencies table
 --- @field refresh_xml function
 --- @field set_xml function
 
@@ -185,6 +186,63 @@ function M.new_from_sln(sln, first_line)
     return self
 end
 
+--- @private
+function M:collect_dependencies()
+    local ret = {}
+
+    if not self.xml.Project.ItemGroup then
+        return ret
+    end
+
+    for _, section in ipairs(self.xml.Project.ItemGroup) do
+        if section.PackageReference then
+            for _, entry in ipairs(section.PackageReference) do
+                local include = entry._attr.Include
+                table.insert(ret, { type = "Nuget", name = include, package = include, version = entry._attr.Version })
+            end
+        end
+
+        if section.ProjectReference then
+            for _, entry in ipairs(section.ProjectReference) do
+                local project = utils.resolve_project(
+                    utils.path_absolute_from_relative_to_file(self.path, utils.os_path(entry._attr.Include))
+                )
+
+                if project then
+                    table.insert(ret, {
+                        type = "Project",
+                        name = project.name,
+                        rel_path = section.ProjectReference._attr.Include,
+                        project = project,
+                    })
+                else
+                    error(
+                        string.format("Unable to resolve dependency '%s' found in '%s'", entry._attr.Include, self.name)
+                    )
+                end
+            end
+        end
+
+        if section.Reference then
+            for _, entry in ipairs(section.Reference) do
+                table.insert(ret, {
+                    type = "Local",
+                    name = vim.fn.fnamemodify(entry.HintPath, ":t"),
+                    path = entry.HintPath,
+                    include = entry._attr.Include,
+                })
+            end
+        end
+    end
+
+    return ret
+end
+
+--- @param name string
+function M:dependency_from_name(name)
+    return utils.tbl_first_matching(self.dependencies, function(_, v) return v.name == name end)
+end
+
 --- @param noread? boolean
 function M:refresh_xml(noread)
     if not noread then
@@ -214,74 +272,7 @@ function M:refresh_xml(noread)
         end
     end
 
-    self.dependencies = {}
-
-    if not self.xml.Project.ItemGroup then
-        return
-    end
-
-    for _, section in ipairs(self.xml.Project.ItemGroup) do
-        if section.PackageReference then
-            if #section.PackageReference == 0 then
-                table.insert(self.dependencies, {
-                    type = "Nuget",
-                    package = section.PackageReference._attr.Include,
-                    version = section.PackageReference._attr.Version,
-                })
-            else
-                for _, entry in ipairs(section.PackageReference) do
-                    table.insert(
-                        self.dependencies,
-                        { type = "Nuget", package = entry._attr.Include, version = entry._attr.Version }
-                    )
-                end
-            end
-        end
-
-        if section.ProjectReference then
-            if #section.ProjectReference == 0 then
-                table.insert(self.dependencies, {
-                    type = "Project",
-                    rel_path = section.ProjectReference._attr.Include,
-                    project = utils.resolve_project(
-                        utils.path_absolute_from_relative_to_file(
-                            self.path,
-                            utils.os_path(section.ProjectReference._attr.Include)
-                        )
-                    ),
-                })
-            else
-                for _, entry in ipairs(section.ProjectReference) do
-                    table.insert(self.dependencies, {
-                        type = "Project",
-                        rel_path = section.ProjectReference._attr.Include,
-                        project = utils.resolve_project(
-                            utils.path_absolute_from_relative_to_file(self.path, utils.os_path(entry._attr.Include))
-                        ),
-                    })
-                end
-            end
-        end
-
-        if section.Reference then
-            -- If the section exists but its length is zero, then it's not an
-            -- array but it's a single table. The table follows the same format
-            -- as each entry in the array as handled below
-            if #section.Reference == 0 then
-                table.insert(
-                    self.dependencies,
-                    { type = "Local", path = section.Reference.HintPath, include = section.Reference._attr.Include }
-                )
-            else
-                for _, entry in ipairs(section.Reference) do
-                    table.insert(
-                        self.dependencies,
-                        { type = "Local", path = entry.HintPath, include = entry._attr.Include }
-                    )
-                end
-            end
-        end
-    end
+    self.dependencies = self:collect_dependencies()
 end
 
 -- TODO: Preserve formatting of original csproj file
