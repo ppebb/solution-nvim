@@ -23,6 +23,13 @@ return {
     end,
     opts = {
         nargs = 1,
-        complete = "file",
+        complete = function(_, cmd_line, cursor_pos)
+            return utils.complete_file(
+                cmd_line,
+                #"SolutionRegister" + 2,
+                cursor_pos,
+                { "%.sln$", "%.csproj$", "/", "\\", "%.%." }
+            )
+        end,
     },
 }

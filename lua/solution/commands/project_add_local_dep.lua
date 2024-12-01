@@ -1,4 +1,5 @@
 local utils = require("solution.utils")
+local aggregate_projects = require("solution").aggregate_projects
 
 return {
     name = "ProjectAddLocalDep",
@@ -18,6 +19,23 @@ return {
     end,
     opts = {
         nargs = "+",
-        -- TODO: Custom file completion as the second argument
+        complete = function(_, cmd_line, cursor_pos)
+            return utils.complete_2args(
+                _,
+                cmd_line,
+                cursor_pos,
+                function()
+                    return utils.tbl_map_to_arr(aggregate_projects, function(_, e) return e.name end)
+                end,
+                function(arg1)
+                    return utils.complete_file(
+                        cmd_line,
+                        #"ProjectAddLocalDep" + #arg1 + 3,
+                        cursor_pos,
+                        { "%.dll$", "/", "\\", "%.%." }
+                    )
+                end
+            )
+        end,
     },
 }

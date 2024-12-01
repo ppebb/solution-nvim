@@ -347,6 +347,26 @@ function M.complete_2args(_, cmd_line, cursor_pos, comp_arg1, comp_arg2)
     end
 end
 
+function M.complete_file(pat, offset, cursor_pos, filters)
+    local res = vim.fn.getcompletion(pat:sub(offset, cursor_pos), "file")
+
+    if filters then
+        res = vim.tbl_filter(function(e)
+            for _, pattern in ipairs(filters) do
+                if e:find(pattern) then
+                    return true
+                end
+            end
+
+            return false
+        end, res)
+    end
+
+    res = vim.tbl_map(function(e) return e:gsub(" ", "\\ ") end, res)
+
+    return res
+end
+
 --- @generic U
 --- @generic T
 --- @generic Z
