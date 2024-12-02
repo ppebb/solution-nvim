@@ -11,6 +11,7 @@ local M = {}
 local commands = {
     -- TODO: Autodetection of commands? May require file io to read all modules
     -- in directory, in which case it's not happening
+    require("solution.commands.nuget"),
     require("solution.commands.project_add_local_dep"),
     require("solution.commands.project_add_nuget_dep"),
     require("solution.commands.project_add_project_ref"),

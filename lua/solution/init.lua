@@ -41,9 +41,8 @@ function M.init(path)
         end
     end
 
-    require("solution.commands").init(M.slns, M.aggregate_projects)
+    require("solution.commands").init()
     require("solution.nuget.api").init()
-    require("solution.nuget.ui").init(M.config)
 end
 
 function M.setup(config)

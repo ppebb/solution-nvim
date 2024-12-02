@@ -247,9 +247,25 @@ function M.resolve_project(ppn, projects)
     return nil
 end
 
+function M.center_align(text_arr, width)
+    local numspaces = {}
+    for _, line in pairs(text_arr) do
+        table.insert(numspaces, math.floor((width - vim.api.nvim_strwidth(line)) / 2))
+    end
+
+    local centered = {}
+    for i = 1, #text_arr do
+        table.insert(centered, (" "):rep(numspaces[i]) .. text_arr[i])
+    end
+
+    return centered
+end
+
 --- @param str string
 --- @return string[]
 function M.split_by_whitespace(str)
+    -- NOTE: I'd like to use split_by_pattern for this, but the weird matching
+    -- prevents that. I wasn't clever enough to come up with a working pattern
     local segments = {}
 
     local old_pos = 1
@@ -260,6 +276,33 @@ function M.split_by_whitespace(str)
 
         old_pos = pos + 2
         pos = str:find("[^\\]%s", pos + 2)
+    end
+
+    if old_pos < #str then
+        table.insert(segments, str:sub(old_pos))
+    end
+
+    return segments
+end
+
+--- @param str string
+--- @param pattern string
+--- @return string[]
+function M.split_by_pattern(str, pattern)
+    local segments = {}
+
+    local old_pos = 1
+    local pos, end_pos, capt = str:find(pattern)
+
+    while pos do
+        if capt then
+            table.insert(segments, capt)
+        else
+            table.insert(segments, str:sub(old_pos, pos - 1))
+        end
+
+        old_pos = end_pos + 1
+        pos, end_pos, capt = str:find(pattern, end_pos + 1)
     end
 
     if old_pos < #str then
@@ -406,6 +449,36 @@ function M.remove_bom(str)
     end
 
     return str
+end
+
+--- @param str string
+--- @return string[]
+function M.tokenize(str)
+    local ret = {}
+    for token in str:gmatch("%S+") do
+        table.insert(ret, token)
+    end
+
+    return ret
+end
+
+--- @param str string
+--- @param width integer
+--- @return string[]
+function M.word_wrap(str, width)
+    local tokens = M.tokenize(str)
+    local lines = {}
+    local idx = 1
+
+    for _, token in ipairs(tokens) do
+        if #(lines[idx] or "") + #token + 1 > width then
+            idx = idx + 1
+        end
+
+        lines[idx] = (lines[idx] or "") .. (#(lines[idx] or "") ~= 0 and " " or "") .. token
+    end
+
+    return lines
 end
 
 return M
