@@ -4,9 +4,6 @@ local log = require("solution.log")
 local utils = require("solution.utils")
 local aggregate_projects = require("solution").aggregate_projects
 
-local M = {}
-M.__index = M
-
 --- @class ProjectFile
 --- @field name string
 --- @field root string
@@ -14,8 +11,8 @@ M.__index = M
 --- @field text string
 --- @field xml table
 --- @field dependencies table
---- @field refresh_xml function
---- @field set_xml function
+local M = {}
+M.__index = M
 
 --- @param path string
 function M.new_from_file(path)
@@ -280,7 +277,6 @@ end
 --- @return boolean
 function M:set_xml() return utils.file_write_all_text(self.path, xml2lua.toXml(self.xml)) end
 
---- @param self ProjectFile
 --- @param package_name string
 --- @param version? string
 --- @param cb fun(success: boolean, message: string|nil, code: integer?)
@@ -308,7 +304,6 @@ function M:add_nuget_dep(package_name, version, cb)
     end)
 end
 
---- @param self ProjectFile
 --- @param package_name string
 --- @param cb fun(success: boolean, message: string|nil, code: integer?)
 function M:remove_nuget_dep(package_name, cb)
@@ -333,7 +328,6 @@ function M:remove_nuget_dep(package_name, cb)
     )
 end
 
---- @param self ProjectFile
 --- @param path string
 --- @return boolean, string|nil
 function M:add_local_dep(path)
@@ -364,7 +358,6 @@ function M:add_local_dep(path)
     return true, nil
 end
 
---- @param self ProjectFile
 --- @param dll_name string
 --- @return boolean, string|nil
 function M:remove_local_dep(dll_name)
@@ -410,7 +403,6 @@ function M:remove_local_dep(dll_name)
     return true, nil
 end
 
---- @param self ProjectFile
 --- @param project ProjectFile
 --- @param cb fun(success: boolean, message: string|nil, code: integer?)
 function M:add_project_reference(project, cb)
@@ -432,7 +424,6 @@ function M:add_project_reference(project, cb)
     )
 end
 
---- @param self ProjectFile
 --- @param project ProjectFile
 --- @param cb fun(success: boolean, message: string|nil, code: integer?)
 function M:remove_project_reference(project, cb)

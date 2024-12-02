@@ -1,6 +1,14 @@
 local utils = require("solution.utils")
 local slns = require("solution").slns
 
+--- @class SolutionFile
+--- @field name string
+--- @field root string
+--- @field path string
+--- @field text string[]
+--- @field version number
+--- @field projects table<string, ProjectFile>
+--- @field current_line integer
 local M = {}
 M.__index = M
 
@@ -41,17 +49,6 @@ function M:read_line()
     return (line and utils.trim(line)) or nil
 end
 
---- @class SolutionFile
---- @field name string
---- @field root string
---- @field path string
---- @field text string[]
---- @field version number
---- @field projects table<string, ProjectFile>
---- @field current_line integer
---- @field read_line function
---- @field add_project function
---- @field remove_project function
 --- @param path string
 --- @return SolutionFile|nil
 function M.new(path)
@@ -93,7 +90,6 @@ function M.new(path)
     return self
 end
 
---- @param self SolutionFile
 --- @param project ProjectFile
 --- @param cb fun(success: boolean, message: string|nil, code: integer?)
 function M:add_project(project, cb)
@@ -115,7 +111,6 @@ function M:add_project(project, cb)
     )
 end
 
---- @param self SolutionFile
 --- @param project ProjectFile
 --- @param cb fun(success: boolean, message: string|nil, code: integer?)
 function M:remove_project(project, cb)
