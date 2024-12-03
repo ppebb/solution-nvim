@@ -1,5 +1,5 @@
 local utils = require("solution.utils")
-local aggregate_projects = require("solution").aggregate_projects
+local projects = require("solution").projects
 
 return {
     name = "ProjectAddProjectRef",
@@ -39,11 +39,11 @@ return {
         nargs = "+",
         complete = function(arg_lead, cmd_line, cursor_pos)
             return utils.complete_2args(arg_lead, cmd_line, cursor_pos, function()
-                return utils.tbl_map_to_arr(aggregate_projects, function(_, e) return e.name end)
+                return utils.tbl_map_to_arr(projects, function(_, e) return e.name end)
             end, function(arg1)
                 return vim.tbl_filter(
                     function(e) return e ~= arg1 end,
-                    utils.tbl_map_to_arr(aggregate_projects, function(_, e) return e.name end)
+                    utils.tbl_map_to_arr(projects, function(_, e) return e.name end)
                 )
             end)
         end,

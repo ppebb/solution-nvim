@@ -1,5 +1,5 @@
 local utils = require("solution.utils")
-local aggregate_projects = require("solution").aggregate_projects
+local projects = require("solution").projects
 
 return {
     name = "ProjectAddLocalDep",
@@ -25,7 +25,7 @@ return {
                 cmd_line,
                 cursor_pos,
                 function()
-                    return utils.tbl_map_to_arr(aggregate_projects, function(_, e) return e.name end)
+                    return utils.tbl_map_to_arr(projects, function(_, e) return e.name end)
                 end,
                 function(arg1)
                     return utils.complete_file(

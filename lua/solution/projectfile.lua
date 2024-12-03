@@ -2,7 +2,7 @@ local xml2lua = require("xml2lua")
 local handler = require("xmlhandler.tree")
 local log = require("solution.log")
 local utils = require("solution.utils")
-local aggregate_projects = require("solution").aggregate_projects
+local projects = require("solution").projects
 
 --- @class ProjectFile
 --- @field name string
@@ -16,8 +16,8 @@ M.__index = M
 
 --- @param path string
 function M.new_from_file(path)
-    if aggregate_projects[path] then
-        return aggregate_projects[path]
+    if projects[path] then
+        return projects[path]
     end
 
     local self = setmetatable({}, M)
@@ -30,7 +30,7 @@ function M.new_from_file(path)
 
     self:refresh_xml()
 
-    aggregate_projects[self.path] = self
+    projects[self.path] = self
 
     return self
 end
@@ -175,11 +175,11 @@ function M.new_from_sln(sln, first_line)
 
     self:parse(sln, first_line)
 
-    if aggregate_projects[self.path] then
-        return aggregate_projects[self.path]
+    if projects[self.path] then
+        return projects[self.path]
     end
 
-    aggregate_projects[self.path] = self
+    projects[self.path] = self
 
     return self
 end

@@ -1,6 +1,6 @@
 local utils = require("solution.utils")
 local nuget_api = require("solution.nuget.api")
-local aggregate_projects = require("solution").aggregate_projects
+local projects = require("solution").projects
 
 return {
     name = "ProjectAddNugetDep",
@@ -31,9 +31,9 @@ return {
         nargs = "+",
         complete = function(arg_lead, cmd_line, cursor_pos)
             return utils.complete_2args(arg_lead, cmd_line, cursor_pos, function()
-                return utils.tbl_map_to_arr(aggregate_projects, function(_, e) return e.name end)
+                return utils.tbl_map_to_arr(projects, function(_, e) return e.name end)
             end, function(_, arg2) return select(2, nuget_api.complete(arg2 or "")) or {} end)
         end,
     },
-    cond = function() return vim.tbl_count(aggregate_projects) ~= 0 end,
+    cond = function() return vim.tbl_count(projects) ~= 0 end,
 }

@@ -1,5 +1,5 @@
 local utils = require("solution.utils")
-local aggregate_projects = require("solution").aggregate_projects
+local projects = require("solution").projects
 local slns = require("solution").slns
 
 return {
@@ -39,7 +39,7 @@ return {
                     return utils.tbl_map_to_arr(
                         vim.tbl_filter(
                             function(proj) return not vim.tbl_contains(sln.projects, proj) end,
-                            aggregate_projects
+                            projects
                         ),
                         function(_, e) return e.name end
                     )

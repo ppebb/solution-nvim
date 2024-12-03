@@ -224,7 +224,7 @@ end
 --- @return ProjectFile|nil
 function M.resolve_project(ppn, projects)
     local fpath = vim.fn.fnamemodify(ppn, ":p")
-    local _projects = projects or require("solution").aggregate_projects
+    local _projects = projects or require("solution").projects
 
     if _projects[fpath] then
         return _projects[fpath]

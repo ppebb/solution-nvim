@@ -1,5 +1,5 @@
 local utils = require("solution.utils")
-local aggregate_projects = require("solution").aggregate_projects
+local projects = require("solution").projects
 
 return {
     name = "ProjectRemoveDep",
@@ -50,7 +50,7 @@ return {
         complete = function(arg_lead, cmd_line, cursor_pos)
             return utils.complete_2args(arg_lead, cmd_line, cursor_pos, function()
                 return utils.tbl_map_to_arr(
-                    vim.tbl_filter(function(e) return #e.dependencies > 0 end, aggregate_projects),
+                    vim.tbl_filter(function(e) return #e.dependencies > 0 end, projects),
                     function(_, e) return e.name end
                 )
             end, function(arg1)
@@ -68,6 +68,6 @@ return {
     },
     cond = function()
         -- One project needs to have dependencies for this to be enabled
-        return vim.tbl_count(vim.tbl_filter(function(e) return #e.dependencies > 0 end, aggregate_projects)) ~= 0
+        return vim.tbl_count(vim.tbl_filter(function(e) return #e.dependencies > 0 end, projects)) ~= 0
     end,
 }

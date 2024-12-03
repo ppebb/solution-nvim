@@ -6,7 +6,7 @@ local M = {}
 M.slns = {}
 --- All projects. Populated on project creation in solution.projectfile.new...
 --- @type table<string, ProjectFile>
-M.aggregate_projects = {}
+M.projects = {}
 
 local DEFAULT = {
     icons = true,
