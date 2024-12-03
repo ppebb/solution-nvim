@@ -382,7 +382,7 @@ function M.complete_2args(_, cmd_line, cursor_pos, comp_arg1, comp_arg2)
     if splen == 1 then
         return comp_arg1(split[2])
     elseif splen > 1 and splen < 4 then
-        if cursor_pos < _2nd then
+        if cursor_pos <= _2nd or _2nd == -1 then
             return comp_arg1(split[2])
         elseif cursor_pos < _3rd or _3rd == -1 then
             return comp_arg2(split[2], split[3])
