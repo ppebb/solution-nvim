@@ -22,8 +22,8 @@ M.__index = M
 --- @class TextmenuEntry
 --- @field text string[]
 --- @field expand string[]
+--- @field data table Arbitrary data to hold in the entry for use with keymaps
 --- @field open? boolean
---- @field select? fun(name: string)
 
 --- @class TextmenuHeader
 --- @field lines string[]
@@ -207,6 +207,18 @@ function M.new(nsname, keymaps, filetype)
     })
 
     for _, keymap in ipairs(keymaps) do
+        if keymap.opts and keymap.opts.callback then
+            local temp = keymap.opts.callback
+            keymap.opts.callback = function()
+                local entry
+                if self.current_extid then
+                    entry = self.entry_by_extid[self.current_extid]
+                end
+
+                temp(entry)
+            end
+        end
+
         api.nvim_buf_set_keymap(self.bufnr, keymap.mode, keymap.lhs or "", keymap.rhs or "", keymap.opts or {})
     end
 

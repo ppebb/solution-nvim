@@ -105,9 +105,9 @@ local function refresh() return make_header(), make_entries() end
 
 --- @type Keymap[]
 local keymaps = {
-    { mode = "n", lhs = "s", opts = { noremap = true, callback = function() M.search({ prompt = true }) end } },
-    { mode = "n", lhs = "f", opts = { noremap = true, callback = function() M.change_page(1) end } },
-    { mode = "n", lhs = "d", opts = { noremap = true, callback = function() M.change_page(-1) end } },
+    { mode = "n", lhs = "s", opts = { noremap = true, callback = function(_) M.search({ prompt = true }) end } },
+    { mode = "n", lhs = "f", opts = { noremap = true, callback = function(_) M.change_page(1) end } },
+    { mode = "n", lhs = "d", opts = { noremap = true, callback = function(_) M.change_page(-1) end } },
 }
 
 function M.open()
