@@ -206,13 +206,28 @@ function M.slns_contains_project(slns, path)
     return false
 end
 
---- @param slns table<string, SolutionFile>
---- @param name string
+--- @param ssn string The path or solution name
+--- @param solutions? table<string, SolutionFile> The solutions table to resolve from
 --- @return SolutionFile|nil
-function M.sln_from_name(slns, name)
-    for _, sln in pairs(slns) do
-        if sln.name == name then
-            return sln
+function M.resolve_solution(ssn, solutions)
+    local fpath = vim.fn.fnamemodify(ssn, ":p")
+    local _solutions = solutions or require("solution").slns
+
+    if _solutions[fpath] then
+        return _solutions[fpath]
+    end
+
+    local _, by_name = M.tbl_first_matching(_solutions, function(_, v) return v.name == ssn end)
+    if by_name then
+        return by_name
+    end
+
+    if M.file_exists(fpath) then
+        local new = require("solution.solutionfile").new(fpath)
+
+        -- Register the project, but only return it if we're not searching specifically within an array
+        if not solutions then
+            return new
         end
     end
 

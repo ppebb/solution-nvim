@@ -7,7 +7,7 @@ return {
     func = function(opts)
         local sln_name = assert(opts.fargs[1], "A solution name must be provided as argument 1")
         local sln =
-            assert(utils.sln_from_name(slns, sln_name), string.format("No solution of name '%s' was found!", sln_name))
+            assert(utils.resolve_solution(sln_name), string.format("No solution of name '%s' was found!", sln_name))
 
         local ppn = assert(opts.fargs[2], "A project name or path must be provided as argument 2")
         local project = assert(utils.resolve_project(ppn), string.format("Project '%s' could not be found!", ppn))
@@ -34,13 +34,10 @@ return {
             return utils.complete_2args(arg_lead, cmd_line, cursor_pos, function()
                 return utils.tbl_map_to_arr(slns, function(_, e) return e.name end)
             end, function(arg1)
-                local sln = utils.sln_from_name(slns, arg1)
+                local sln = utils.resolve_solution(arg1)
                 if sln then
                     return utils.tbl_map_to_arr(
-                        vim.tbl_filter(
-                            function(proj) return not vim.tbl_contains(sln.projects, proj) end,
-                            projects
-                        ),
+                        vim.tbl_filter(function(proj) return not vim.tbl_contains(sln.projects, proj) end, projects),
                         function(_, e) return e.name end
                     )
                 end
