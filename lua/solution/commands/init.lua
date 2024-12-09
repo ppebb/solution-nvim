@@ -15,6 +15,7 @@ local commands = {
     require("solution.commands.project_add_local_dep"),
     require("solution.commands.project_add_nuget_dep"),
     require("solution.commands.project_add_project_ref"),
+    require("solution.commands.project_list_dependencies"),
     require("solution.commands.project_remove_dep"),
     require("solution.commands.solution_add_project"),
     require("solution.commands.solution_list_projects"),
