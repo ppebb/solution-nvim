@@ -1,0 +1,3 @@
+[submodule "lua/xml2lua"]
+	path = lua/xml2lua
+	url = https://github.com/ppebb/xml2lua.git
