@@ -1,5 +1,5 @@
-local xml2lua = require("xml2lua")
-local handler = require("xmlhandler.tree")
+local xml2lua = require("xml2lua.xml2lua")
+local handler = require("xml2lua.xmlhandler.tree")
 local log = require("solution.log")
 local utils = require("solution.utils")
 local projects = require("solution").projects
@@ -245,14 +245,6 @@ end
 function M:refresh_xml(noread)
     if not noread then
         local h = handler:new()
-        h.options = {
-            noreduce = {
-                ItemGroup = true,
-                PackageReference = true,
-                ProjectReference = true,
-                Reference = true,
-            },
-        }
         local parser = xml2lua.parser(h)
 
         local success = xpcall(parser.parse, function(e)
