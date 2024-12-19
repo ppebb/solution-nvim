@@ -36,6 +36,13 @@ function M.set_buf_opts(bufnr, opts)
     for k, v in pairs(buf_opts) do
         api.nvim_set_option_value(k, v, { buf = bufnr })
     end
+
+    local success, colorizer = pcall(require, "colorizer")
+    if not success then
+        return
+    end
+
+    colorizer.detach_from_buffer(bufnr)
 end
 
 --- @param winhl integer
