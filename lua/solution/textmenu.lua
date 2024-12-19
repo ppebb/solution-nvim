@@ -10,7 +10,7 @@ local api = vim.api
 --- @field current_line integer
 --- @field win_opts vim.api.keyset.win_config
 --- @field restrict boolean
---- @field current_extid = integer
+--- @field current_extid integer
 --- @field entry_by_extid table<integer, TextmenuEntry>
 --- @field old_pos integer[]
 --- @field refresh fun(): TextmenuHeader, TextmenuEntry[]
