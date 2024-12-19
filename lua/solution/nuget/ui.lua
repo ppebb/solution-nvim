@@ -1,3 +1,4 @@
+local alert = require("solution.alert")
 local nuget_api = require("solution.nuget.api")
 local textmenu = require("solution.textmenu")
 local utils = require("solution.utils")
@@ -117,7 +118,7 @@ local function add_to_project(project, package_name, version)
         end
 
         local wrapped = utils.word_wrap(msg, math.max(60, #project.name))
-        vim.schedule(function() textmenu.alert(wrapped) end)
+        vim.schedule(function() alert.open(wrapped) end)
     end)
 end
 
