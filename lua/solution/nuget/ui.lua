@@ -1,8 +1,8 @@
-local api = vim.api
 local nuget_api = require("solution.nuget.api")
 local textmenu = require("solution.textmenu")
 local utils = require("solution.utils")
 local config = require("solution").config
+local projects = require("solution").projects
 
 local M = {}
 
@@ -95,7 +95,7 @@ local function make_entries()
         table.insert(lines, "    Latest version: " .. result.versions[#result.versions].version)
 
         local desc_lines = format_desc(result.description)
-        table.insert(ret, { text = lines, expand = desc_lines })
+        table.insert(ret, { text = lines, expand = desc_lines, data = { name = result.id, version = nil } })
     end
 
     return ret
@@ -108,6 +108,44 @@ local keymaps = {
     { mode = "n", lhs = "s", opts = { noremap = true, callback = function(_) M.search({ prompt = true }) end } },
     { mode = "n", lhs = "f", opts = { noremap = true, callback = function(_) M.change_page(1) end } },
     { mode = "n", lhs = "d", opts = { noremap = true, callback = function(_) M.change_page(-1) end } },
+    {
+        mode = "n",
+        lhs = "a",
+        opts = {
+            noremap = true,
+            callback = function(entry)
+                vim.ui.select(
+                    utils.tbl_map_to_arr(projects, function(_, e) return e.name end),
+                    { prompt = "Select a project:" },
+                    function(choice)
+                        local project = utils.resolve_project(choice)
+
+                        project:add_nuget_dep(entry.data.name, entry.data.version, function(success, message, code)
+                            local msg
+                            if not success then
+                                msg = string.format(
+                                    "Failed to add package '%s' to project '%s'%s%s",
+                                    entry.data.name,
+                                    project.name,
+                                    (message and ", " .. message) or "",
+                                    (code and ", code: " .. code) or ""
+                                )
+                            else
+                                msg = string.format(
+                                    "Successfully added package '%s' to project '%s'",
+                                    entry.data.name,
+                                    project.name
+                                )
+                            end
+
+                            local wrapped = utils.word_wrap(msg, 40)
+                            vim.schedule(function() textmenu.alert(wrapped, #wrapped, 40) end)
+                        end)
+                    end
+                )
+            end,
+        },
+    },
 }
 
 function M.open()

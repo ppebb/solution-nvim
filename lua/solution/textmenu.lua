@@ -1,4 +1,5 @@
 local api = vim.api
+local utils = require("solution.utils")
 
 --- @class Textmenu
 --- @field bufnr integer
@@ -36,11 +37,11 @@ M.__index = M
 --- @field col_end integer
 
 --- @return vim.api.keyset.win_config
-local function create_win_opts()
+local function create_win_opts(height, width)
     local l = vim.o.lines - vim.o.cmdheight
     local c = vim.o.columns
-    local h = math.ceil(l * 0.9)
-    local w = math.ceil(c * 0.8)
+    local h = height or math.ceil(l * 0.9)
+    local w = width or math.ceil(c * 0.8)
     return {
         height = h,
         width = w,
@@ -50,6 +51,32 @@ local function create_win_opts()
         style = "minimal",
         zindex = 50,
     }
+end
+
+local function set_buf_opts(bufnr, opts)
+    local buf_opts = {
+        modifiable = false,
+        swapfile = false,
+        buftype = "nofile",
+        buflisted = false,
+        bufhidden = "wipe",
+    }
+
+    buf_opts = vim.tbl_deep_extend("force", buf_opts, opts or {})
+
+    for k, v in pairs(buf_opts) do
+        api.nvim_set_option_value(k, v, { buf = bufnr })
+    end
+end
+
+local function close_win_and_buf(winhl, bufnr)
+    if winhl and api.nvim_win_is_valid(winhl) then
+        api.nvim_win_close(winhl, true)
+    end
+
+    if bufnr and api.nvim_buf_is_valid(bufnr) then
+        api.nvim_buf_delete(bufnr, { force = true })
+    end
 end
 
 function M:register_autocmds()
@@ -72,11 +99,7 @@ function M:register_autocmds()
         group = self.augroup,
         buffer = self.bufnr,
         callback = function()
-            vim.schedule(function()
-                if api.nvim_win_is_valid(self.winhl) then
-                    api.nvim_win_close(self.winhl, true)
-                end
-            end)
+            vim.schedule(function() self:close() end)
         end,
     })
 
@@ -86,7 +109,6 @@ function M:register_autocmds()
             local buftype = api.nvim_get_option_value("buftype", { buf = 0 })
             if buftype ~= "prompt" and buftype ~= "nofile" then
                 self:close()
-                return true
             end
         end,
     })
@@ -164,18 +186,7 @@ function M.new(nsname, keymaps, filetype)
     }
 
     setmetatable(self, M)
-    local buf_opts = {
-        modifiable = false,
-        swapfile = false,
-        buftype = "nofile",
-        buflisted = false,
-        bufhidden = "wipe",
-        filetype = filetype,
-    }
-
-    for k, v in pairs(buf_opts) do
-        api.nvim_set_option_value(k, v, { buf = self.bufnr })
-    end
+    set_buf_opts(bufnr, { filetype = filetype })
 
     self:register_autocmds()
 
@@ -209,13 +220,15 @@ function M.new(nsname, keymaps, filetype)
     for _, keymap in ipairs(keymaps) do
         if keymap.opts and keymap.opts.callback then
             local temp = keymap.opts.callback
-            keymap.opts.callback = function()
-                local entry
-                if self.current_extid then
-                    entry = self.entry_by_extid[self.current_extid]
-                end
+            if temp then
+                keymap.opts.callback = function()
+                    local entry
+                    if self.current_extid then
+                        entry = self.entry_by_extid[self.current_extid]
+                    end
 
-                temp(entry)
+                    temp(entry)
+                end
             end
         end
 
@@ -278,13 +291,85 @@ function M:render()
 end
 
 function M:close()
-    if self.winhl and api.nvim_win_is_valid(self.winhl) then
-        api.nvim_win_close(self.winhl, true)
+    close_win_and_buf(self.winhl, self.bufnr)
+    api.nvim_clear_autocmds({ group = self.augroup })
+end
+
+local num_alerts = 0
+
+--- @param text string[]
+--- @param h integer|nil
+--- @param w integer|nil
+function M.alert(text, h, w)
+    local _w = w
+
+    if not _w then
+        _w = -1
+
+        for _, line in ipairs(text) do
+            if #line > _w then
+                _w = #line
+            end
+        end
     end
 
-    if self.bufnr and api.nvim_buf_is_valid(self.bufnr) then
-        api.nvim_buf_delete(self.bufnr, { force = true })
-    end
+    local opts = create_win_opts(h or #text, _w)
+    opts.border = "single"
+    local bufnr = api.nvim_create_buf(false, false)
+
+    local winhl = api.nvim_open_win(bufnr, true, opts)
+    set_buf_opts(bufnr, { modifiable = true })
+
+    api.nvim_buf_set_lines(bufnr, 0, -1, false, text)
+
+    api.nvim_buf_set_keymap(
+        bufnr,
+        "n",
+        "q",
+        "",
+        { noremap = true, callback = function() close_win_and_buf(winhl, bufnr) end }
+    )
+
+    api.nvim_buf_set_keymap(
+        bufnr,
+        "n",
+        "<CR>",
+        "",
+        { noremap = true, callback = function() close_win_and_buf(winhl, bufnr) end }
+    )
+
+    local augroup = api.nvim_create_augroup("solution_alert_" .. num_alerts, { clear = true })
+
+    api.nvim_create_autocmd("VimResized", {
+        group = augroup,
+        buffer = bufnr,
+        callback = function()
+            local _opts = create_win_opts(h, w)
+            api.nvim_win_set_config(winhl, _opts)
+        end,
+    })
+
+    api.nvim_create_autocmd({ "BufHidden", "BufUnload" }, {
+        group = augroup,
+        buffer = bufnr,
+        callback = function()
+            vim.schedule(function() close_win_and_buf(winhl, bufnr) end)
+        end,
+    })
+
+    api.nvim_create_autocmd("WinEnter", {
+        group = augroup,
+        callback = function()
+            local buftype = api.nvim_get_option_value("buftype", { buf = 0 })
+            if buftype ~= "prompt" and buftype ~= "nofile" then
+                close_win_and_buf(winhl, bufnr)
+            end
+        end,
+    })
+
+    api.nvim_set_option_value("modifiable", false, { buf = bufnr })
+
+    num_alerts = num_alerts + 1
 end
 
 return M
