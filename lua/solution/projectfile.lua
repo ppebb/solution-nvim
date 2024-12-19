@@ -245,6 +245,14 @@ end
 function M:refresh_xml(noread)
     if not noread then
         local h = handler:new()
+        h.options = {
+            noreduce = {
+                ItemGroup = true,
+                PackageReference = true,
+                ProjectReference = true,
+                Reference = true,
+            },
+        }
         local parser = xml2lua.parser(h)
 
         local success = xpcall(parser.parse, function(e)
