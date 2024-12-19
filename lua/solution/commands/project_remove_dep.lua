@@ -56,10 +56,7 @@ return {
             end, function(arg1)
                 local project = utils.resolve_project(arg1)
                 if project then
-                    print(project.dependencies)
-                    return {
-                        vim.tbl_map(function(e) return e.name end, project.dependencies) or {},
-                    }
+                    return vim.tbl_map(function(e) return e.name end, project.dependencies) or {}
                 end
 
                 return {}
