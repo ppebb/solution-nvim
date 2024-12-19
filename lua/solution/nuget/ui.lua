@@ -138,8 +138,8 @@ local keymaps = {
                                 )
                             end
 
-                            local wrapped = utils.word_wrap(msg, 40)
-                            vim.schedule(function() textmenu.alert(wrapped, #wrapped, 40) end)
+                            local wrapped = utils.word_wrap(msg, math.max(60, #project.name))
+                            vim.schedule(function() textmenu.alert(wrapped) end)
                         end)
                     end
                 )

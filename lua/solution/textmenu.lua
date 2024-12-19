@@ -313,14 +313,16 @@ function M.alert(text, h, w)
         end
     end
 
-    local opts = create_win_opts(h or #text, _w)
+    local _text = utils.center_align(text, _w)
+
+    local opts = create_win_opts(h or #_text, _w)
     opts.border = "single"
     local bufnr = api.nvim_create_buf(false, false)
 
     local winhl = api.nvim_open_win(bufnr, true, opts)
     set_buf_opts(bufnr, { modifiable = true })
 
-    api.nvim_buf_set_lines(bufnr, 0, -1, false, text)
+    api.nvim_buf_set_lines(bufnr, 0, -1, false, _text)
 
     api.nvim_buf_set_keymap(
         bufnr,
