@@ -101,7 +101,25 @@ local function make_entries()
     return ret
 end
 
-local function refresh() return make_header(), make_entries() end
+local function add_to_project(project, package_name, version)
+    project:add_nuget_dep(package_name, version, function(success, message, code)
+        local msg
+        if not success then
+            msg = string.format(
+                "Failed to add package '%s' to project '%s'%s%s",
+                package_name,
+                project.name,
+                (message and ", " .. message) or "",
+                (code and ", code: " .. code) or ""
+            )
+        else
+            msg = string.format("Successfully added package '%s' to project '%s'", package_name, project.name)
+        end
+
+        local wrapped = utils.word_wrap(msg, math.max(60, #project.name))
+        vim.schedule(function() textmenu.alert(wrapped) end)
+    end)
+end
 
 --- @type Keymap[]
 local keymaps = {
@@ -113,44 +131,28 @@ local keymaps = {
         lhs = "a",
         opts = {
             noremap = true,
-            callback = function(entry)
-                vim.ui.select(
-                    utils.tbl_map_to_arr(projects, function(_, e) return e.name end),
-                    { prompt = "Select a project:" },
-                    function(choice)
-                        local project = utils.resolve_project(choice)
-
-                        project:add_nuget_dep(entry.data.name, entry.data.version, function(success, message, code)
-                            local msg
-                            if not success then
-                                msg = string.format(
-                                    "Failed to add package '%s' to project '%s'%s%s",
-                                    entry.data.name,
-                                    project.name,
-                                    (message and ", " .. message) or "",
-                                    (code and ", code: " .. code) or ""
-                                )
-                            else
-                                msg = string.format(
-                                    "Successfully added package '%s' to project '%s'",
-                                    entry.data.name,
-                                    project.name
-                                )
-                            end
-
-                            local wrapped = utils.word_wrap(msg, math.max(60, #project.name))
-                            vim.schedule(function() textmenu.alert(wrapped) end)
-                        end)
-                    end
-                )
+            callback = function(project, entry)
+                if project then
+                    add_to_project(project, entry.data.name, entry.data.version)
+                else
+                    vim.ui.select(
+                        utils.tbl_map_to_arr(projects, function(_, e) return e.name end),
+                        { prompt = "Select a project:" },
+                        function(choice)
+                            local _project = utils.resolve_project(choice)
+                            add_to_project(_project, entry.data.name, entry.data.version)
+                        end
+                    )
+                end
             end,
         },
     },
 }
 
-function M.open()
-    tm = textmenu.new("SolutionNugetBrowser", keymaps, "SolutionNugetBrowser")
-    tm:set_refresh(refresh)
+--- @param project ProjectFile|nil
+function M.open(project)
+    tm = textmenu.new(project, keymaps, "SolutionNugetBrowser", "SolutionNugetBrowser")
+    tm:set_refresh(function() return make_header(), make_entries() end)
 
     M.search({ reset = true })
 end

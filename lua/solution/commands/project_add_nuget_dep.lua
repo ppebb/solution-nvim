@@ -14,6 +14,11 @@ return {
         local ppn = assert(opts.fargs[1], "A project name or path must be passed as argument 1")
         local project = assert(utils.resolve_project(ppn), string.format("Project '%s' could not be found!", ppn))
 
+        if #opts.fargs == 1 then
+            nuget_ui.open(project)
+            return
+        end
+
         local package_name = assert(opts.fargs[2], "A package name must be provided as argument 2")
         local package_ver = opts.fargs[3]
 

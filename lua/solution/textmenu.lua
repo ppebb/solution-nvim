@@ -2,6 +2,7 @@ local api = vim.api
 local utils = require("solution.utils")
 
 --- @class Textmenu
+--- @field instance any
 --- @field bufnr integer
 --- @field winhl integer
 --- @field nsname string
@@ -163,17 +164,19 @@ end
 --- @field rhs? string
 --- @field opts? vim.api.keyset.keymap
 
---- @param nsname string
+--- @param instance any Instance of object the textmenu represents
+--- @param nsname string Name for highlight and extmark namespaces
 --- @param keymaps Keymap[]
 --- @param filetype string
 --- @return Textmenu
-function M.new(nsname, keymaps, filetype)
+function M.new(instance, keymaps, nsname, filetype)
     local opts = create_win_opts()
     local bufnr = api.nvim_create_buf(false, true)
 
     --- @type Textmenu
     --- @diagnostic disable-next-line: missing-fields
     local self = {
+        instance = instance,
         bufnr = bufnr,
         winhl = api.nvim_open_win(bufnr, true, opts),
         nsname = nsname,
@@ -227,7 +230,7 @@ function M.new(nsname, keymaps, filetype)
                         entry = self.entry_by_extid[self.current_extid]
                     end
 
-                    temp(entry)
+                    temp(instance, entry)
                 end
             end
         end
