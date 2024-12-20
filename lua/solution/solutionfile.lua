@@ -64,7 +64,7 @@ function M.new(path)
     local self = setmetatable({}, M)
 
     -- Opened a solution file
-    self.name = vim.fn.fnamemodify(path, ":t:r")
+    self.name = vim.fn.fnamemodify(path, ":t")
     self.root = vim.fn.fnamemodify(path, ":p:h")
     self.path = path_full
     self.text = utils.file_read_all_text(path)

@@ -22,7 +22,7 @@ function M.new_from_file(path)
 
     local self = setmetatable({}, M)
 
-    self.name = vim.fn.fnamemodify(path, ":t:r")
+    self.name = vim.fn.fnamemodify(path, ":t")
     self.root = vim.fn.fnamemodify(path, ":p:h")
     self.path = vim.fn.fnamemodify(path, ":p")
     self.text = utils.file_read_all_text(path)
