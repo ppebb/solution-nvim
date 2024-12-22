@@ -1,6 +1,6 @@
 local nuget_ui = require("solution.nuget.ui")
 
 return {
-    name = "Nuget",
+    name = "NugetBrowser",
     func = function() nuget_ui.open() end,
 }

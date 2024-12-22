@@ -11,7 +11,7 @@ local M = {}
 local commands = {
     -- TODO: Autodetection of commands? May require file io to read all modules
     -- in directory, in which case it's not happening
-    require("solution.commands.nuget"),
+    require("solution.commands.nuget_browser"),
     require("solution.commands.project_add_local_dep"),
     require("solution.commands.project_add_nuget_dep"),
     require("solution.commands.project_add_project_ref"),
@@ -19,8 +19,8 @@ local commands = {
     require("solution.commands.project_remove_dep"),
     require("solution.commands.solution_add_project"),
     require("solution.commands.solution_list_projects"),
-    require("solution.commands.solution_log"),
-    require("solution.commands.solution_register"),
+    require("solution.commands.solution_nvim_log"),
+    require("solution.commands.solution_nvim_register"),
     require("solution.commands.solution_remove_project"),
 }
 

@@ -1,7 +1,7 @@
 local utils = require("solution.utils")
 
 return {
-    name = "SolutionRegister",
+    name = "SolutionNvimRegister",
     func = function(opts)
         local fname = assert(opts.fargs[1], "A solution or project file must be provided as argument 1")
         local is_csproj = fname:find("%.csproj$")
