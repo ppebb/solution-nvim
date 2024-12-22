@@ -4,9 +4,8 @@ local slns = require("solution").slns
 return {
     name = "SolutionListProjects",
     func = function(opts)
-        local sln_name = assert(opts.fargs[1], "A solution name must be provided as argument 1")
-        local sln =
-            assert(utils.resolve_solution(sln_name), string.format("No solution of name '%s' was found!", sln_name))
+        local ssn = assert(opts.fargs[1], "A solution name or path must be provided as argument 1")
+        local sln = assert(utils.resolve_solution(ssn), string.format("Solution '%s' could not be found!", ssn))
 
         if vim.tbl_count(sln.projects) == 0 then
             print(string.format("Solution '%s' does not contain any projects!", sln.name))

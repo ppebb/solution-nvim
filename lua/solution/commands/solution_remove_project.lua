@@ -4,9 +4,8 @@ local slns = require("solution").slns
 return {
     name = "SolutionRemoveProject",
     func = function(opts)
-        local sln_name = assert(opts.fargs[1], "A solution name must be provided as argument 1")
-        local sln =
-            assert(utils.resolve_solution(sln_name), string.format("No solution of name '%s' was found!", sln_name))
+        local ssn = assert(opts.fargs[1], "A solution name or path must be provided as argument 1")
+        local sln = assert(utils.resolve_solution(ssn), string.format("Solution '%s' could not be found!", ssn))
 
         local ppn = assert(opts.fargs[2], "A project name or path must be provided as argument 2")
         local project = assert(
