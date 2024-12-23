@@ -83,7 +83,7 @@ function M:parse_first_project_line(first_line)
     local project_type_guid, project_name, relative_path, project_guid = first_line:match(CRACK_PROJECT_LINE)
     relative_path = utils.os_path(relative_path)
     self.path = vim.fn.fnamemodify(relative_path, ":p")
-    self.name = project_name
+    self.name = project_name .. ".csproj"
     self.root = vim.fn.fnamemodify(self.path, ":p:h")
     self.project_guid = project_guid
 
