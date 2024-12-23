@@ -10,7 +10,7 @@ local projects = require("solution").projects
 --- @field path string
 --- @field text string
 --- @field xml table
---- @field dependencies table
+--- @field dependencies Dependency[]
 local M = {}
 M.__index = M
 
@@ -184,8 +184,27 @@ function M.new_from_sln(sln, first_line)
     return self
 end
 
+--- @enum DependencyType
+local dependency_type = {
+    nuget = "Nuget",
+    project = "Project",
+    _local = "Local",
+}
+
+--- @class Dependency
+--- @field type DependencyType
+--- @field name string
+--- @field package string?
+--- @field version string?
+--- @field project ProjectFile?
+--- @field rel_path string?
+--- @field path string?
+--- @field include string?
+
 --- @private
+--- @return Dependency[]
 function M:collect_dependencies()
+    --- @type Dependency[]
     local ret = {}
 
     if not self.xml.Project.ItemGroup then
@@ -196,7 +215,10 @@ function M:collect_dependencies()
         if section.PackageReference then
             for _, entry in ipairs(section.PackageReference) do
                 local include = entry._attr.Include
-                table.insert(ret, { type = "Nuget", name = include, package = include, version = entry._attr.Version })
+                table.insert(
+                    ret,
+                    { type = dependency_type.nuget, name = include, package = include, version = entry._attr.Version }
+                )
             end
         end
 
@@ -208,7 +230,7 @@ function M:collect_dependencies()
 
                 if project then
                     table.insert(ret, {
-                        type = "Project",
+                        type = dependency_type.project,
                         name = project.name,
                         rel_path = section.ProjectReference._attr.Include,
                         project = project,
@@ -224,7 +246,7 @@ function M:collect_dependencies()
         if section.Reference then
             for _, entry in ipairs(section.Reference) do
                 table.insert(ret, {
-                    type = "Local",
+                    type = dependency_type._local,
                     name = vim.fn.fnamemodify(entry.HintPath, ":t"),
                     path = entry.HintPath,
                     include = entry._attr.Include,
