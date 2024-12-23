@@ -93,9 +93,9 @@ function M.search_files(path)
                 type = type or (uv.fs_stat(abs_path) or {}).type
 
                 if type == "file" then
-                    if name:find(".csproj") then
+                    if name:find("%.csproj") then
                         table.insert(found_projects, abs_path)
-                    elseif name:find(".sln") then
+                    elseif name:find("%.sln") then
                         table.insert(found_solutions, abs_path)
                     end
                 end

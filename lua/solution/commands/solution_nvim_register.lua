@@ -4,8 +4,8 @@ return {
     name = "SolutionNvimRegister",
     func = function(opts)
         local fname = assert(opts.fargs[1], "A solution or project file must be provided as argument 1")
-        local is_csproj = fname:find("%.csproj$")
-        local is_sln = fname:find("%.sln$")
+        local is_csproj = fname:find("%.csproj")
+        local is_sln = fname:find("%.sln")
         assert(is_csproj or is_sln, "A solution or project file must be provided as argument 1")
 
         assert(utils.file_exists(fname), string.format("The file '%s' does not exist!", fname))
@@ -28,7 +28,7 @@ return {
                 cmd_line,
                 #"SolutionRegister" + 2,
                 cursor_pos,
-                { "%.sln$", "%.csproj$", "/", "\\", "%.%." }
+                { "%.sln", "%.csproj", "/", "\\", "%.%." }
             )
         end,
     },
