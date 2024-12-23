@@ -169,9 +169,27 @@ function M:make_entries()
     end
 
     for _, project in pairs(self.projects) do
+        local expand = {}
+
+        for _, dependency in ipairs(project.dependencies) do
+            local line
+
+            if dependency.type == "Nuget" then
+                line = string.format("        Package Dependency %s (%s)", dependency.name, dependency.version)
+            elseif dependency.type == "Project" then
+                line = string.format("        Project Dependency %s (%s)", dependency.name, dependency.rel_path)
+            elseif dependency.type == "Local" then
+                line = string.format("        Local Dependency %s (%s)", dependency.name, dependency.path)
+            end
+
+            table.insert(expand, line)
+        end
+
+        table.insert(expand, "")
+
         table.insert(ret, {
             text = { string.format("    %s (%s)", project.name, project.path) },
-            expand = {},
+            expand = expand,
             data = { project = project },
         })
     end
