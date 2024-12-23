@@ -19,6 +19,7 @@ local commands = {
     require("solution.commands.project_remove_dep"),
     require("solution.commands.solution_add_project"),
     require("solution.commands.solution_list_projects"),
+    require("solution.commands.solution_menu"),
     require("solution.commands.solution_nvim_log"),
     require("solution.commands.solution_nvim_register"),
     require("solution.commands.solution_remove_project"),

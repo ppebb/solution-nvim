@@ -115,11 +115,22 @@ function M:register_autocmds()
     })
 end
 
+--- @class KeymapOpts
+--- --- @field noremap? boolean
+--- @field nowait? boolean
+--- @field silent? boolean
+--- @field script? boolean
+--- @field expr? boolean
+--- @field unique? boolean
+--- @field callback? fun(tm: Textmenu, instance: any, entry: TextmenuEntry)
+--- @field desc? string
+--- @field replace_keycodes? boolean
+
 --- @class Keymap
 --- @field mode string
 --- @field lhs? string
 --- @field rhs? string
---- @field opts? vim.api.keyset.keymap
+--- @field opts? KeymapOpts
 
 --- @param instance any Instance of object the textmenu represents
 --- @param nsname string Name for highlight and extmark namespaces
@@ -127,7 +138,7 @@ end
 --- @param filetype string
 --- @return Textmenu
 function M.new(instance, keymaps, nsname, filetype)
-    local opts = wu.create_win_opts()
+    local win_opts = wu.create_win_opts()
     local bufnr = api.nvim_create_buf(false, true)
 
     --- @type Textmenu
@@ -135,9 +146,9 @@ function M.new(instance, keymaps, nsname, filetype)
     local self = {
         instance = instance,
         bufnr = bufnr,
-        winhl = api.nvim_open_win(bufnr, true, opts),
+        winhl = api.nvim_open_win(bufnr, true, win_opts),
         nsname = nsname,
-        win_opts = opts,
+        win_opts = win_opts,
         current_line = 0,
         hlns = api.nvim_create_namespace(nsname),
         extns = api.nvim_create_namespace(nsname .. "_exts"),
@@ -193,7 +204,7 @@ function M.new(instance, keymaps, nsname, filetype)
                         entry = self.entry_by_extid[self.current_extid]
                     end
 
-                    temp(instance, entry)
+                    temp(self, instance, entry)
                 end
             end
         end

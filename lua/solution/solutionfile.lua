@@ -1,4 +1,7 @@
+local alert = require("solution.alert")
+local textmenu = require("solution.textmenu")
 local utils = require("solution.utils")
+local projects = require("solution").projects
 local slns = require("solution").slns
 
 --- @class SolutionFile
@@ -132,6 +135,165 @@ function M:remove_project(project, cb)
             cb(true, nil, nil)
         end
     )
+end
+
+--- @private
+--- @return TextmenuHeader
+function M:make_header(width)
+    local lines = utils.center_align({
+        " solution-nvim ",
+        "Editing solution " .. self.name,
+    }, width)
+
+    return {
+        lines = lines,
+        highlights = {
+            { group = "SolutionNugetHeader", line = 0, col_start = lines[1]:find("%S") - 2, col_end = -1 },
+        },
+    }
+end
+
+--- @private
+--- @return TextmenuEntry[]
+function M:make_entries()
+    local ret = {}
+
+    if vim.tbl_count(self.projects) == 0 then
+        table.insert(ret, {
+            text = { "    No projects present" },
+            expand = {},
+            data = {},
+        })
+
+        return ret
+    end
+
+    for _, project in pairs(self.projects) do
+        table.insert(ret, {
+            text = { string.format("    %s (%s)", project.name, project.path) },
+            expand = {},
+            data = { project = project },
+        })
+    end
+
+    return ret
+end
+
+-- NOTE: As far as I can tell this is the only way to provide the solution to
+-- complete for, because viml anonymous functions aren't a thing. One option
+-- would be redefining some viml function within the callback using this... but
+-- honestly I think that's worse
+_G.SolutionToCompleteFor = nil
+function _G.SolutionAddProjectCompletion(_)
+    local sln = _G.SolutionToCompleteFor
+    if sln then
+        return utils.tbl_map_to_arr(
+            vim.tbl_filter(function(proj) return not vim.tbl_contains(sln.projects, proj) end, projects),
+            function(_, e) return e.name end
+        )
+    else
+        return utils.tbl_map_to_arr(projects, function(_, v) return v.name end)
+    end
+end
+
+--- @type Keymap[]
+local keymaps = {
+    {
+        mode = "n",
+        lhs = "a",
+        opts = {
+            noremap = true,
+            callback = function(tm, sln, _)
+                _G.SolutionToCompleteFor = sln
+
+                local handle_input = function(input)
+                    if not input or #input == 0 then
+                        alert.open({ "No project name provided" })
+                        return
+                    end
+
+                    local project = utils.resolve_project(input)
+                    if not project then
+                        alert.open(utils.word_wrap(string.format("Project '%s' could not be found!", input), 40))
+                        return
+                    end
+
+                    local cb = function(success, message, code)
+                        local alert_message
+                        if not success then
+                            alert_message = string.format(
+                                "Failed to add project '%s' to solution '%s'%s%s",
+                                project.name,
+                                sln.name,
+                                (message and ", " .. message) or "",
+                                (code and ", code: " .. code) or ""
+                            )
+                        else
+                            tm:render()
+
+                            alert_message = string.format(
+                                "Successfully added project '%s' to solution '%s'!",
+                                project.name,
+                                sln.name
+                            )
+                        end
+
+                        alert.open(utils.word_wrap(alert_message, 40))
+                    end
+
+                    sln:add_project(project, vim.schedule_wrap(cb))
+                end
+
+                vim.ui.input(
+                    { prompt = "Add a project: ", completion = "customlist,v:lua.SolutionAddProjectCompletion" },
+                    handle_input
+                )
+            end,
+        },
+    },
+    {
+        mode = "n",
+        lhs = "d",
+        opts = {
+            noremap = true,
+            callback = function(tm, sln, entry)
+                if not entry.data.project then
+                    return
+                end
+
+                local cb = function(success, message, code)
+                    local alert_message
+                    if not success then
+                        alert_message = string.format(
+                            "Failed to remove project '%s' from solution '%s'%s%s",
+                            entry.data.project.name,
+                            sln.name,
+                            (message and ", " .. message) or "",
+                            (code and ", code: " .. code) or ""
+                        )
+                    else
+                        tm:render()
+
+                        alert_message = string.format(
+                            "Successfully removed project '%s' to solution '%s'!",
+                            entry.data.project.name,
+                            sln.name
+                        )
+                    end
+
+                    alert.open(utils.word_wrap(alert_message, 40))
+                end
+
+                sln:remove_project(entry.data.project, vim.schedule_wrap(cb))
+            end,
+        },
+    },
+}
+
+function M:open_textmenu()
+    local tm = textmenu.new(self, keymaps, "SolutonEditor", "SolutonEditor")
+    tm:set_refresh(function() return self:make_header(tm.win_opts.width), self:make_entries() end)
+    tm:render()
 end
 
 return M

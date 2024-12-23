@@ -132,7 +132,7 @@ local keymaps = {
         lhs = "a",
         opts = {
             noremap = true,
-            callback = function(project, entry)
+            callback = function(_, project, entry)
                 if project then
                     add_to_project(project, entry.data.name, entry.data.version)
                 else
