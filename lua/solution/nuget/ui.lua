@@ -160,7 +160,7 @@ end
 
 function M.search(opts) -- This is really ugly but vim.ui.input cannot be done synchronously
     if opts and opts.prompt then
-        vim.ui.input({ prompt = "Search for a package" }, function(input)
+        vim.ui.input({ prompt = "Search for a package: " }, function(input)
             if not input then
                 return
             end
