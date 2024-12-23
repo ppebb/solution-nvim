@@ -1,7 +1,9 @@
 local utils = require("solution.utils")
 
+local name = "SolutionNvimRegister"
+
 return {
-    name = "SolutionNvimRegister",
+    name = name,
     func = function(opts)
         local fname = assert(opts.fargs[1], "A solution or project file must be provided as argument 1")
         local is_csproj = fname:find("%.csproj")
@@ -24,12 +26,7 @@ return {
     opts = {
         nargs = 1,
         complete = function(_, cmd_line, cursor_pos)
-            return utils.complete_file(
-                cmd_line,
-                #"SolutionRegister" + 2,
-                cursor_pos,
-                { "%.sln", "%.csproj", "/", "\\", "%.%." }
-            )
+            return utils.complete_file(cmd_line, #name + 2, cursor_pos, { "%.sln", "%.csproj", "/", "\\", "%.%." })
         end,
     },
 }

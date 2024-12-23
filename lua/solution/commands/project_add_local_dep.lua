@@ -1,8 +1,10 @@
 local utils = require("solution.utils")
 local projects = require("solution").projects
 
+local name = "ProjectAddLocalDep"
+
 return {
-    name = "ProjectAddLocalDep",
+    name = name,
     func = function(opts)
         local ppn = assert(opts.fargs[1], "A project name or path must be passed as argument 1")
         local project = assert(utils.resolve_project(ppn), string.format("Project '%s' could not be found!", ppn))
@@ -28,12 +30,7 @@ return {
                     return utils.tbl_map_to_arr(projects, function(_, e) return e.name end)
                 end,
                 function(arg1)
-                    return utils.complete_file(
-                        cmd_line,
-                        #"ProjectAddLocalDep" + #arg1 + 3,
-                        cursor_pos,
-                        { "%.dll$", "/", "\\", "%.%." }
-                    )
+                    return utils.complete_file(cmd_line, #name + #arg1 + 3, cursor_pos, { "%.dll$", "/", "\\", "%.%." })
                 end
             )
         end,
