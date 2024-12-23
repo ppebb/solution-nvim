@@ -179,10 +179,15 @@ function M.new(instance, keymaps, nsname, filetype)
     })
 
     for _, keymap in ipairs(keymaps) do
-        if keymap.opts and keymap.opts.callback then
-            local temp = keymap.opts.callback
+        local opts = {}
+        for k, v in pairs(keymap.opts) do
+            opts[k] = v
+        end
+
+        if opts.callback then
+            local temp = opts.callback
             if temp then
-                keymap.opts.callback = function()
+                opts.callback = function()
                     local entry
                     if self.current_extid then
                         entry = self.entry_by_extid[self.current_extid]
@@ -193,7 +198,7 @@ function M.new(instance, keymaps, nsname, filetype)
             end
         end
 
-        api.nvim_buf_set_keymap(self.bufnr, keymap.mode, keymap.lhs or "", keymap.rhs or "", keymap.opts or {})
+        api.nvim_buf_set_keymap(self.bufnr, keymap.mode, keymap.lhs or "", keymap.rhs or "", opts)
     end
 
     return self
