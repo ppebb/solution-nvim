@@ -47,8 +47,8 @@ function M.open(text, h, w)
     api.nvim_buf_set_lines(bufnr, 0, -1, false, _text)
 
     api.nvim_buf_set_keymap(bufnr, "n", "q", "", { noremap = true, callback = function() self:close() end })
-
     api.nvim_buf_set_keymap(bufnr, "n", "<CR>", "", { noremap = true, callback = function() self:close() end })
+    api.nvim_buf_set_keymap(bufnr, "n", "<ESC>", "", { noremap = true, callback = function() self:close() end })
 
     api.nvim_create_autocmd("VimResized", {
         group = self.augroup,

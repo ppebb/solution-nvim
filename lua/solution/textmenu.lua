@@ -151,6 +151,7 @@ function M.new(instance, keymaps, nsname, filetype)
     self:register_autocmds()
 
     api.nvim_buf_set_keymap(self.bufnr, "n", "q", "", { noremap = true, callback = function() self:close() end })
+    api.nvim_buf_set_keymap(self.bufnr, "n", "<ESC>", "", { noremap = true, callback = function() self:close() end })
     api.nvim_buf_set_keymap(self.bufnr, "n", "<CR>", "", {
         noremap = true,
         callback = function()
