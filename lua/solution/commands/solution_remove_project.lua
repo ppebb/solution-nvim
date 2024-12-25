@@ -44,5 +44,4 @@ return {
             end)
         end,
     },
-    cond = function() return vim.tbl_count(slns) > 0 end,
 }

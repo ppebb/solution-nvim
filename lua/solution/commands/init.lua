@@ -6,7 +6,6 @@ local M = {}
 --- @field name string
 --- @field func fun(opts: table)
 --- @field opts table?
---- @field cond? fun(): boolean
 
 local commands = {
     -- TODO: Autodetection of commands? May require file io to read all modules
@@ -27,9 +26,7 @@ local commands = {
 
 function M.init()
     for _, command in ipairs(commands) do
-        if not command.cond or command.cond() then
-            api.nvim_create_user_command(command.name, command.func, command.opts or {})
-        end
+        api.nvim_create_user_command(command.name, command.func, command.opts or {})
     end
 end
 

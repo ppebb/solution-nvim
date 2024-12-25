@@ -46,5 +46,4 @@ return {
             end, function(_, arg2) return select(2, nuget_api.complete(arg2 or "")) or {} end)
         end,
     },
-    cond = function() return vim.tbl_count(projects) ~= 0 end,
 }

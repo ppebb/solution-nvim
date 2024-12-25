@@ -63,8 +63,4 @@ return {
             end)
         end,
     },
-    cond = function()
-        -- One project needs to have dependencies for this to be enabled
-        return vim.tbl_count(vim.tbl_filter(function(e) return #e.dependencies > 0 end, projects)) ~= 0
-    end,
 }
