@@ -405,6 +405,10 @@ function M.complete_2args(_, cmd_line, cursor_pos, comp_arg1, comp_arg2)
     end
 end
 
+--- @param pat string
+--- @param offset integer
+--- @param cursor_pos integer
+--- @param filters? string[]
 function M.complete_file(pat, offset, cursor_pos, filters)
     local res = vim.fn.getcompletion(pat:sub(offset, cursor_pos), "file")
 
@@ -469,6 +473,18 @@ function M.tbl_map_to_arr(tbl, func)
 
     for k, v in pairs(tbl) do
         table.insert(ret, func(k, v))
+    end
+
+    return ret
+end
+
+--- @param tbl table
+--- @return table
+function M.tbl_shallow_copy(tbl)
+    local ret = {}
+
+    for k, v in pairs(tbl) do
+        ret[k] = v
     end
 
     return ret

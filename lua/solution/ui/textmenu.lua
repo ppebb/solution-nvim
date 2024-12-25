@@ -1,4 +1,5 @@
 local api = vim.api
+local utils = require("solution.utils")
 local wu = require("solution.winutils")
 
 --- @class Textmenu
@@ -190,10 +191,7 @@ function M.new(instance, keymaps, nsname, filetype)
     })
 
     for _, keymap in ipairs(keymaps) do
-        local opts = {}
-        for k, v in pairs(keymap.opts) do
-            opts[k] = v
-        end
+        local opts = utils.tbl_shallow_copy(keymap.opts)
 
         if opts.callback then
             local temp = opts.callback
