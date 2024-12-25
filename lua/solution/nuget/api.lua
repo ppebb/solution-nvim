@@ -39,7 +39,33 @@ function M.init()
     uv.queue_work(uv.new_work(query_endpoints, function(ret) endpoints = vim.mpack.decode(ret) end))
 end
 
---- @retrn number, table
+--- @class QueryResult
+--- @field id string The ID of the matched package
+--- @field version string The full SemVer 2.0.0 version string of the package (could contain build metadata)
+--- @field description? string
+--- @field versions QueryResultVersion[] All of the versions of the package matching the prerelease parameter
+--- @field authors? string|string[]
+--- @field iconUrl? string
+--- @field licenseUrl? string
+--- @field owners? string|string[] A string represents a single owner's username
+--- @field projectUrl? string
+--- @field registration? string The absolute URL to the associated registration index
+--- @field summary? string
+--- @field tags? string|string[]
+--- @field title? string
+--- @field totalDownloads? integer This value can be inferred by the sum of downloads in the versions array
+--- @field verified? boolean A JSON boolean indicating whether the package is verified
+--- @field packageTypes QueryResultPackageType[] The package types defined by the package author (added in SearchQueryService/3.5.0)
+
+--- @class QueryResultVersion
+--- @field @id string The absolute URL to the associated registration leaf
+--- @field version string The full SemVer 2.0.0 version string of the package (could contain build metadata)
+--- @field downloads integer The number of downloads for this specific package version
+
+--- @class QueryResultPackageType
+--- @field name string The name of the package type.
+
+--- @retrn number, QueryResult[]
 function M.query(query, skip, take)
     local full_response = {}
 

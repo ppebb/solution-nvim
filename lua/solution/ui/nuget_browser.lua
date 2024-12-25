@@ -5,39 +5,91 @@ local utils = require("solution.utils")
 local config = require("solution").config
 local projects = require("solution").projects
 
+--- @class NugetBrowser
+--- @field tm Textmenu
+--- @field page integer
+--- @field query_text string|nil
+--- @field query_count integer
+--- @field results table<integer, QueryResult[]>
+--- @field project ProjectFile|nil
+--- @field cb fun(browser: NugetBrowser) Called upon adding a package to the project
 local M = {}
+M.__index = M
 
---- @type Textmenu
-local tm
+--- @param prompt string|nil
+function M:search(prompt)
+    -- If a new prompt is provided, reset everything
+    if prompt then
+        self.query_text = prompt
+        self.query_count = 0
+        self.results = {}
+        self.page = 0
+    end
 
-local page = 0
-local query_text = nil
-local count = 0
-local results = {}
+    -- If the result already exists, then just return it
+    local existing_result = self.results[self.page]
+    if existing_result then
+        return existing_result
+    end
 
-local function reset()
-    query_text = ""
-    page = 0
-    results = {}
+    self.query_count, self.results[self.page] =
+        nuget_api.query(self.query_text or "", self.page * config.nuget.take, config.nuget.take)
 end
 
-local function query()
-    count, results[page] = nuget_api.query(query_text, page * config.nuget.take, config.nuget.take)
+--- @param num integer
+function M:change_page(num)
+    self.page = self.page + num
+
+    if self.page < 0 then
+        self.page = 0
+    end
+
+    local max_page = math.floor(self.query_count / config.nuget.take)
+    if self.page > max_page then
+        self.page = max_page
+    end
+
+    self:search()
 end
 
-local function make_header()
+function M:add_to_project(package_name, version)
+    self.project:add_nuget_dep(package_name, version, function(success, message, code)
+        local msg
+        if not success then
+            msg = string.format(
+                "Failed to add package '%s' to project '%s'%s%s",
+                package_name,
+                self.project.name,
+                (message and ", " .. message) or "",
+                (code and ", code: " .. code) or ""
+            )
+        else
+            msg = string.format("Successfully added package '%s' to project '%s'", package_name, self.project.name)
+            if self.cb then
+                self.cb(self)
+            end
+        end
+
+        local wrapped = utils.word_wrap(msg, math.max(60, #self.project.name))
+        vim.schedule(function() alert.open(wrapped) end)
+    end)
+end
+
+--- @private
+--- @return TextmenuHeader
+function M:make_header()
     local lines = utils.center_align({
         " solution-nvim ",
         "Press 's' to search",
-        "Query: " .. (#query_text ~= 0 and query_text or "None"),
+        "Query: " .. (#self.query_text ~= 0 and self.query_text or "None"),
         string.format(
             "%s Result%s: Page %s of %s",
-            count,
-            (count == 1 and "" or "s"),
-            page + 1,
-            math.ceil(count / config.nuget.take)
+            self.query_count,
+            (self.query_count == 1 and "" or "s"),
+            self.page + 1,
+            math.ceil(self.query_count / config.nuget.take)
         ),
-    }, tm.win_opts.width)
+    }, self.tm.win_opts.width)
 
     local scol2 = lines[2]:find("'s'") - 1
     return {
@@ -51,9 +103,9 @@ end
 
 --- @param desc string
 --- @return string[]
-local function format_desc(desc)
+function M:format_desc(desc)
     local lines = utils.split_by_pattern(desc, "\n")
-    local width = tm.win_opts.width - 6
+    local width = self.tm.win_opts.width - 6
     local i = 1
 
     while i <= #lines do
@@ -78,14 +130,15 @@ local function format_desc(desc)
     return vim.tbl_map(function(e) return "      " .. e end, lines)
 end
 
+--- @private
 --- @return TextmenuEntry[]
-local function make_entries()
+function M:make_entries()
     local ret = {}
-    if not results[page] then
+    if not self.results[self.page] then
         return ret
     end
 
-    for _, result in ipairs(results[page]) do
+    for _, result in ipairs(self.results[self.page]) do
         local lines = {}
 
         table.insert(
@@ -95,55 +148,70 @@ local function make_entries()
         table.insert(lines, "    " .. result.totalDownloads .. " total downloads")
         table.insert(lines, "    Latest version: " .. result.versions[#result.versions].version)
 
-        local desc_lines = format_desc(result.description)
+        local desc_lines = self:format_desc(result.description)
         table.insert(ret, { text = lines, expand = desc_lines, data = { name = result.id, version = nil } })
     end
 
     return ret
 end
 
-local function add_to_project(project, package_name, version)
-    project:add_nuget_dep(package_name, version, function(success, message, code)
-        local msg
-        if not success then
-            msg = string.format(
-                "Failed to add package '%s' to project '%s'%s%s",
-                package_name,
-                project.name,
-                (message and ", " .. message) or "",
-                (code and ", code: " .. code) or ""
-            )
-        else
-            msg = string.format("Successfully added package '%s' to project '%s'", package_name, project.name)
-        end
-
-        local wrapped = utils.word_wrap(msg, math.max(60, #project.name))
-        vim.schedule(function() alert.open(wrapped) end)
-    end)
-end
-
 --- @type Keymap[]
 local keymaps = {
-    { mode = "n", lhs = "s", opts = { noremap = true, callback = function(_) M.search({ prompt = true }) end } },
-    { mode = "n", lhs = "f", opts = { noremap = true, callback = function(_) M.change_page(1) end } },
-    { mode = "n", lhs = "d", opts = { noremap = true, callback = function(_) M.change_page(-1) end } },
+    {
+        mode = "n",
+        lhs = "s",
+        opts = {
+            noremap = true,
+            callback = function(tm, browser, _)
+                vim.ui.input({ prompt = "Search for a package: " }, function(input)
+                    browser:search(input)
+                    tm:render()
+                end)
+            end,
+        },
+    },
+    {
+        mode = "n",
+        lhs = "f",
+        opts = {
+            noremap = true,
+            callback = function(tm, browser, _)
+                browser:change_page(1)
+                tm:render()
+            end,
+        },
+    },
+    {
+        mode = "n",
+        lhs = "d",
+        opts = {
+            noremap = true,
+            callback = function(tm, browser, _)
+                browser:change_page(-1)
+                tm:render()
+            end,
+        },
+    },
     {
         mode = "n",
         lhs = "a",
         opts = {
             noremap = true,
-            callback = function(_, project, entry)
-                if project then
-                    add_to_project(project, entry.data.name, entry.data.version)
+            callback = function(_, browser, entry)
+                if browser.project then
+                    browser:add_to_project(entry.data.name, entry.data.version)
                 else
-                    vim.ui.select(
-                        utils.tbl_map_to_arr(projects, function(_, e) return e.name end),
-                        { prompt = "Select a project: " },
-                        function(choice)
-                            local _project = utils.resolve_project(choice)
-                            add_to_project(_project, entry.data.name, entry.data.version)
+                    vim.ui.select(utils.tbl_map_to_arr(projects, function(_, v) return v end), {
+                        prompt = "Select a project: ",
+                        format_item = function(item) return item.name end,
+                    }, function(choice)
+                        if not choice then
+                            return
                         end
-                    )
+
+                        browser.project = choice
+                        browser:add_to_project(entry.data.name, entry.data.version)
+                    end)
                 end
             end,
         },
@@ -151,49 +219,27 @@ local keymaps = {
 }
 
 --- @param project ProjectFile|nil
-function M.open(project)
-    tm = textmenu.new(project, keymaps, "SolutionNugetBrowser", "SolutionNugetBrowser")
-    tm:set_refresh(function() return make_header(), make_entries() end)
+--- @param cb fun(tm: NugetBrowser) Called upon adding a package to the project
+--- @return NugetBrowser
+function M.open(project, cb)
+    local self = {}
+    setmetatable(self, M)
 
-    M.search({ reset = true })
+    self.project = project
+    self.query_text = ""
+    self.page = 0
+    self.cb = cb
+    self.results = {}
+
+    self.tm = textmenu.new(self, keymaps, "SolutionNugetBrowser", "SolutionNugetBrowser")
+    self.tm:set_refresh(function() return self:make_header(), self:make_entries() end)
+
+    self:search()
+    self.tm:render()
+
+    return self
 end
 
-function M.search(opts) -- This is really ugly but vim.ui.input cannot be done synchronously
-    if opts and opts.prompt then
-        vim.ui.input({ prompt = "Search for a package: " }, function(input)
-            if not input then
-                return
-            end
-            reset()
-            query_text = input
-            query()
-            tm:render()
-        end)
-    else
-        if opts and opts.reset then
-            reset()
-        elseif results[page] then
-            tm:render()
-            return
-        end
-        query()
-        tm:render()
-    end
-end
-
-function M.change_page(num)
-    page = page + num
-
-    if page < 0 then
-        page = 0
-    end
-
-    local max_page = math.floor(count / config.nuget.take)
-    if page > max_page then
-        page = max_page
-    end
-
-    M.search()
-end
+function M:close() self.tm:close() end
 
 return M
