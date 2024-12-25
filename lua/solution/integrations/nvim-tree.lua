@@ -1,6 +1,7 @@
 local api = vim.api
 local ntapi = require("nvim-tree.api")
 local utils = require("solution.utils")
+local sln_open_textmenu = require("solution.ui.solution_menu")
 
 local M = {}
 
@@ -22,7 +23,7 @@ function M.on_attach(bufnr, key)
             if node.absolute_path:find("%.csproj") then
                 -- open csproj menu
             elseif node.absolute_path:find("%.sln") then
-                utils.resolve_solution(node.absolute_path):open_textmenu()
+                sln_open_textmenu(utils.resolve_solution(node.absolute_path))
             end
         end,
     })

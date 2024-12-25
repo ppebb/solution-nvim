@@ -1,5 +1,5 @@
 local utils = require("solution.utils")
-local nuget_ui = require("solution.nuget.ui")
+local nuget_ui = require("solution.ui.nuget_browser")
 local nuget_api = require("solution.nuget.api")
 
 local name = "ProjectAddNugetDep"

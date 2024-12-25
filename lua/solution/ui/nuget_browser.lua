@@ -1,6 +1,6 @@
-local alert = require("solution.alert")
+local alert = require("solution.ui.alert")
 local nuget_api = require("solution.nuget.api")
-local textmenu = require("solution.textmenu")
+local textmenu = require("solution.ui.textmenu")
 local utils = require("solution.utils")
 local config = require("solution").config
 local projects = require("solution").projects
@@ -138,7 +138,7 @@ local keymaps = {
                 else
                     vim.ui.select(
                         utils.tbl_map_to_arr(projects, function(_, e) return e.name end),
-                        { prompt = "Select a project:" },
+                        { prompt = "Select a project: " },
                         function(choice)
                             local _project = utils.resolve_project(choice)
                             add_to_project(_project, entry.data.name, entry.data.version)

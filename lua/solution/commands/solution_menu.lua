@@ -1,5 +1,7 @@
 local utils = require("solution.utils")
-local slns = require("solution").slns
+local sln_open_textmenu = require("solution.ui.solution_menu")
+
+local name = "SolutionMenu"
 
 return {
     name = name,
@@ -7,7 +9,7 @@ return {
         local ssn = assert(opts.fargs[1], "A solution file or name must be provided as argument 1")
         local sln = assert(utils.resolve_solution(ssn), "No solution of name '%s' was found!")
 
-        sln:open_textmenu()
+        sln_open_textmenu(sln)
     end,
     opts = {
         nargs = 1,
