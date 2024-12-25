@@ -103,7 +103,7 @@ local keymaps = {
                         return
                     end
 
-                    local cb = function(success, message, code)
+                    local function cb(success, message, code)
                         local alert_message
                         if not success then
                             alert_message = string.format(
@@ -146,7 +146,7 @@ local keymaps = {
                     return
                 end
 
-                local cb = function(success, message, code)
+                local function cb(success, message, code)
                     local alert_message
                     if not success then
                         alert_message = string.format(
@@ -160,7 +160,7 @@ local keymaps = {
                         tm:render()
 
                         alert_message = string.format(
-                            "Successfully removed project '%s' to solution '%s'!",
+                            "Successfully removed project '%s' from solution '%s'!",
                             entry.data.project.name,
                             sln.name
                         )
