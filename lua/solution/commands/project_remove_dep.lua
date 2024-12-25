@@ -28,23 +28,7 @@ return {
             end
         end
 
-        if dep.type == "Nuget" then
-            project:remove_nuget_dep(dep.package, response_handler)
-        elseif dep.type == "Project" then
-            project:remove_project_reference(dep.project, response_handler)
-        elseif dep.type == "Local" then
-            local success, message = project:remove_local_dep(dep.path)
-            response_handler(success, message, nil)
-        else
-            -- This should never hit, or something has gone very wrong
-            error(
-                string.format(
-                    "Attempted to remove dependency of unkown type '%s' from project '%s'",
-                    dep.type,
-                    project.name
-                )
-            )
-        end
+        project:remove_dependency(dep, response_handler)
     end,
     opts = {
         nargs = "+",

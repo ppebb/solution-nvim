@@ -194,7 +194,7 @@ local dependency_type = {
 --- @class Dependency
 --- @field type DependencyType
 --- @field name string
---- @field package string?
+--- @field pkg string?
 --- @field version string?
 --- @field project ProjectFile?
 --- @field rel_path string?
@@ -217,7 +217,7 @@ function M:collect_dependencies()
                 local include = entry._attr.Include
                 table.insert(
                     ret,
-                    { type = dependency_type.nuget, name = include, package = include, version = entry._attr.Version }
+                    { type = dependency_type.nuget, name = include, pkg = include, version = entry._attr.Version }
                 )
             end
         end
@@ -232,7 +232,7 @@ function M:collect_dependencies()
                     table.insert(ret, {
                         type = dependency_type.project,
                         name = project.name,
-                        rel_path = section.ProjectReference._attr.Include,
+                        rel_path = utils.os_path(entry._attr.Include),
                         project = project,
                     })
                 else
@@ -451,11 +451,11 @@ end
 function M:remove_project_reference(project, cb)
     utils.spawn_proc(
         "dotnet",
-        { "remove", self.path, "project", project.path },
+        { "remove", self.path, "reference", project.path },
         nil,
         nil,
         function(code, _, stdout_agg, stderr_agg)
-            if not stdout_agg:find("removed%.$") then
+            if not stdout_agg:find("removed%.") then
                 log.log("error", stdout_agg .. stderr_agg)
                 cb(false, (stdout_agg .. stderr_agg):gsub("\n", ""), code)
                 return
@@ -465,6 +465,26 @@ function M:remove_project_reference(project, cb)
             cb(true, nil, nil)
         end
     )
+end
+
+--- @param dep Dependency
+--- @param cb fun(success: boolean, message: string|nil, code: integer?)
+function M:remove_dependency(dep, cb)
+    if dep.type == "Nuget" then
+        self:remove_nuget_dep(dep.pkg, cb)
+    elseif dep.type == "Project" then
+        self:remove_project_reference(dep.project, cb)
+    elseif dep.type == "Local" then
+        local success, message = self:remove_local_dep(dep.path)
+        cb(success, message, nil)
+    else
+        -- This should never hit, or something has gone very wrong
+        cb(
+            false,
+            string.format("Attempted to remove dependency of unkown type '%s' from self '%s'", dep.type, self.name),
+            nil
+        )
+    end
 end
 
 return M
