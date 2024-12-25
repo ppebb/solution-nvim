@@ -222,7 +222,7 @@ function M.resolve_solution(ssn, solutions)
         return by_name
     end
 
-    if M.file_exists(fpath) then
+    if fpath:find("%.sln") and M.file_exists(fpath) then
         local new = require("solution.solutionfile").new(fpath)
 
         -- Register the project, but only return it if we're not searching specifically within an array
@@ -250,7 +250,7 @@ function M.resolve_project(ppn, projects)
         return by_name
     end
 
-    if M.file_exists(fpath) then
+    if fpath:find("%.csproj") and M.file_exists(fpath) then
         local new = require("solution.projectfile").new_from_file(fpath)
 
         -- Register the project, but only return it if we're not searching specifically within an array
