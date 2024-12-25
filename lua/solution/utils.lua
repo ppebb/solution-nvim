@@ -408,21 +408,54 @@ end
 function M.complete_file(pat, offset, cursor_pos, filters)
     local res = vim.fn.getcompletion(pat:sub(offset, cursor_pos), "file")
 
-    if filters then
-        res = vim.tbl_filter(function(e)
-            for _, pattern in ipairs(filters) do
-                if e:find(pattern) then
-                    return true
-                end
-            end
+    filters = filters or {}
+    table.insert(filters, "/$") -- Matches folders
+    table.insert(filters, "\\$") -- Matches windows folders
+    table.insert(filters, "%.%.") -- Matches parent directory
 
-            return false
-        end, res)
-    end
+    res = vim.tbl_filter(function(e)
+        for _, pattern in ipairs(filters) do
+            if e:find(pattern) then
+                return true
+            end
+        end
+
+        return false
+    end, res)
 
     res = vim.tbl_map(function(e) return e:gsub(" ", "\\ ") end, res)
 
     return res
+end
+
+--- @param cmd_line string
+--- @param offset integer
+--- @param cursor_pos integer
+--- @param projects ProjectFile[]|nil
+function M.complete_projects(cmd_line, offset, cursor_pos, projects)
+    local _projects = projects or require("solution").projects
+    local ret = M.tbl_map_to_arr(_projects, function(_, e) return e.name end)
+
+    if #ret == 0 then
+        return M.complete_file(cmd_line, offset, cursor_pos, { "%.csproj" })
+    end
+
+    return ret
+end
+
+--- @param cmd_line string
+--- @param offset integer
+--- @param cursor_pos integer
+--- @param solutions SolutionFile[]|nil
+function M.complete_solutions(cmd_line, offset, cursor_pos, solutions)
+    local _slns = solutions or require("solution").slns
+    local ret = M.tbl_map_to_arr(_slns, function(_, e) return e.name end)
+
+    if #ret == 0 then
+        return M.complete_file(cmd_line, offset, cursor_pos, { "%.sln" })
+    end
+
+    return ret
 end
 
 --- @generic U

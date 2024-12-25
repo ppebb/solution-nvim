@@ -1,10 +1,11 @@
 local utils = require("solution.utils")
 local nuget_ui = require("solution.nuget.ui")
 local nuget_api = require("solution.nuget.api")
-local projects = require("solution").projects
+
+local name = "ProjectAddNugetDep"
 
 return {
-    name = "ProjectAddNugetDep",
+    name = name,
     func = function(opts)
         if #opts.fargs == 0 then
             nuget_ui.open()
@@ -41,9 +42,13 @@ return {
     opts = {
         nargs = "*",
         complete = function(arg_lead, cmd_line, cursor_pos)
-            return utils.complete_2args(arg_lead, cmd_line, cursor_pos, function()
-                return utils.tbl_map_to_arr(projects, function(_, e) return e.name end)
-            end, function(_, arg2) return select(2, nuget_api.complete(arg2 or "")) or {} end)
+            return utils.complete_2args(
+                arg_lead,
+                cmd_line,
+                cursor_pos,
+                function() return utils.complete_projects(cmd_line, #name + 2, cursor_pos) end,
+                function(_, arg1) return select(2, nuget_api.complete(arg1 or "")) or {} end
+            )
         end,
     },
 }

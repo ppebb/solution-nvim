@@ -1,8 +1,9 @@
 local utils = require("solution.utils")
-local projects = require("solution").projects
+
+local name = "ProjectListDependencies"
 
 return {
-    name = "ProjectListDependencies",
+    name = name,
     func = function(opts)
         local ppn = assert(opts.fargs[1], "A project name or path must be passed as argument 1")
         local project = assert(utils.resolve_project(ppn), string.format("Project '%s' could not be found!", ppn))
@@ -24,8 +25,6 @@ return {
     end,
     opts = {
         nargs = 1,
-        complete = function()
-            return utils.tbl_map_to_arr(projects, function(_, e) return e.name end)
-        end,
+        complete = function(_, cmd_line, cursor_pos) return utils.complete_projects(cmd_line, #name + 2, cursor_pos) end,
     },
 }

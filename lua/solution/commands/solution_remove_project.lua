@@ -1,8 +1,9 @@
 local utils = require("solution.utils")
-local slns = require("solution").slns
+
+local name = "SolutionRemoveProject"
 
 return {
-    name = "SolutionRemoveProject",
+    name = name,
     func = function(opts)
         local ssn = assert(opts.fargs[1], "A solution name or path must be provided as argument 1")
         local sln = assert(utils.resolve_solution(ssn), string.format("Solution '%s' could not be found!", ssn))
@@ -32,16 +33,20 @@ return {
     opts = {
         nargs = "+",
         complete = function(arg_lead, cmd_line, cursor_pos)
-            return utils.complete_2args(arg_lead, cmd_line, cursor_pos, function()
-                return utils.tbl_map_to_arr(slns, function(_, e) return e.name end)
-            end, function(arg1)
-                local sln = utils.resolve_solution(arg1)
-                if sln then
-                    return utils.tbl_map_to_arr(sln.projects, function(_, e) return e.name end)
-                end
+            return utils.complete_2args(
+                arg_lead,
+                cmd_line,
+                cursor_pos,
+                function() return utils.complete_solutions(cmd_line, #name + 2, cursor_pos) end,
+                function(arg1)
+                    local sln = utils.resolve_solution(arg1)
+                    if sln then
+                        return utils.tbl_map_to_arr(sln.projects, function(_, e) return e.name end)
+                    end
 
-                return {}
-            end)
+                    return {}
+                end
+            )
         end,
     },
 }

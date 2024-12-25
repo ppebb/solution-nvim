@@ -1,5 +1,4 @@
 local utils = require("solution.utils")
-local projects = require("solution").projects
 
 local name = "ProjectAddLocalDep"
 
@@ -26,12 +25,8 @@ return {
                 _,
                 cmd_line,
                 cursor_pos,
-                function()
-                    return utils.tbl_map_to_arr(projects, function(_, e) return e.name end)
-                end,
-                function(arg1)
-                    return utils.complete_file(cmd_line, #name + #arg1 + 3, cursor_pos, { "%.dll$", "/", "\\", "%.%." })
-                end
+                function() return utils.complete_projects(cmd_line, #name + 2, cursor_pos) end,
+                function(arg1) return utils.complete_file(cmd_line, #name + #arg1 + 3, cursor_pos, { "%.dll$" }) end
             )
         end,
     },

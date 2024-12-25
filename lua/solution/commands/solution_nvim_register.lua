@@ -26,7 +26,7 @@ return {
     opts = {
         nargs = 1,
         complete = function(_, cmd_line, cursor_pos)
-            return utils.complete_file(cmd_line, #name + 2, cursor_pos, { "%.sln", "%.csproj", "/", "\\", "%.%." })
+            return utils.complete_file(cmd_line, #name + 2, cursor_pos, { "%.sln", "%.csproj" })
         end,
     },
 }
