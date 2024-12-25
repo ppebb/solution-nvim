@@ -33,7 +33,8 @@ return {
         elseif dep.type == "Project" then
             project:remove_project_reference(dep.project, response_handler)
         elseif dep.type == "Local" then
-            project:remove_local_dep(dep.path, response_handler)
+            local success, message = project:remove_local_dep(dep.path)
+            response_handler(success, message, nil)
         else
             -- This should never hit, or something has gone very wrong
             error(
