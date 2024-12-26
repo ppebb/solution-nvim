@@ -8,7 +8,6 @@ local projects = require("solution").projects
 --- @field name string
 --- @field root string
 --- @field path string
---- @field text string
 --- @field xml table
 --- @field dependencies Dependency[]
 --- @field populated boolean
@@ -18,17 +17,22 @@ local M = {}
 M.__index = M
 
 --- @param path string
+--- @return ProjectFile|nil
 function M.new_from_file(path)
     if projects[path] then
         return projects[path]
     end
 
+    if not utils.file_exists(path) then
+        return nil
+    end
+
+    --- @type ProjectFile
     local self = setmetatable({}, M)
 
     self.name = vim.fn.fnamemodify(path, ":t")
     self.root = vim.fn.fnamemodify(path, ":p:h")
     self.path = vim.fn.fnamemodify(path, ":p")
-    self.text = utils.file_read_all_text(path)
     self.dependencies = {}
     self.populated = false
     self.output_root = nil
@@ -175,6 +179,7 @@ end
 --- @field project_type solution_project_type
 --- @param sln SolutionFile
 --- @param first_line string
+--- @return ProjectFile
 function M.new_from_sln(sln, first_line)
     -- TODO: Avoid reparsing the entire project entry if the project already exists
     local self = setmetatable({}, M)
