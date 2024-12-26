@@ -37,75 +37,88 @@ function M.path_absolute_from_relative_to_file(file, path)
     return vim.fn.fnamemodify(M.path_combine(file_dir, path), ":p")
 end
 
-function M.path_root(path)
-    local path_mut = path
+local _root_markers = {
+    "%.git",
+    "%.sln$",
+}
+
+--- @param path string
+--- @param root_markers? string[]
+--- @return string|nil
+function M.locate_root(path, root_markers)
+    local real_markers = M.tbl_shallow_copy(_root_markers)
+
+    if root_markers then
+        vim.list_extend(real_markers, root_markers)
+    end
+
+    local path_mut = vim.fn.fnamemodify(path, ":p")
+    local path_prev = nil
 
     while true do
-        local t = vim.fn.fnamemodify(path_mut, ":h")
-        if t == path_mut then
-            return t
-        else
-            path_mut = t
+        path_prev = path_mut
+        path_mut = vim.fn.fnamemodify(path_mut, ":h")
+
+        assert(path_prev ~= path_mut, "Reached filesystem root without encountering a root marker")
+
+        local handle =
+            assert(uv.fs_scandir(path_mut), "Unable to acquire handle for '%s' while searching for a root marker")
+
+        while true do
+            local name, _ = uv.fs_scandir_next(handle)
+            if not name then
+                break
+            end
+
+            for _, marker in ipairs(real_markers) do
+                if name:find(marker) then
+                    return M.path_combine(path_mut)
+                end
+            end
         end
     end
 end
 
 --- @param path string
+--- @param root_markers? string[]
 --- @return string[]|nil, string[]|nil
-function M.search_files(path)
-    local path_mut = vim.fn.fnamemodify(path, ":p")
-    if not path_mut then
-        return nil, nil
-    end
-
-    local path_root = M.path_root(path_mut)
-
+function M.search_files(path, root_markers)
     local found_projects = {}
     local found_solutions = {}
 
-    -- Opened a project directly, use this instead of searching for more
-    -- if path_mut:find(".csproj") then
-    --     table.insert(found_projects, path_mut)
-    -- end
-    -- if path_mut:find(".sln") then
-    --     table.insert(found_solutions, path_mut)
-    -- end
+    local root = M.locate_root(path, root_markers)
+    if not root then
+        return nil, nil
+    end
 
-    if not (#found_projects > 0 or #found_solutions > 0) then
+    local function search_directory(_path)
+        local handle = uv.fs_scandir(_path)
+        if not handle then
+            return
+        end
+
         while true do
-            path_mut = vim.fn.fnamemodify(path_mut, ":h") -- get the parent directory
-            if not path_mut then
-                return nil, nil -- probably should not be returning nil here, or anywhere in this function, but oh well
-            end
-
-            local handle = uv.fs_scandir(path_mut)
-            if not handle then
-                return nil, nil
-            end
-
-            while true do
-                local name, type = uv.fs_scandir_next(handle)
-                if not name then
-                    break
-                end
-
-                local abs_path = M.path_combine(path_mut, name)
-                type = type or (uv.fs_stat(abs_path) or {}).type
-
-                if type == "file" then
-                    if name:find("%.csproj") then
-                        table.insert(found_projects, abs_path)
-                    elseif name:find("%.sln") then
-                        table.insert(found_solutions, abs_path)
-                    end
-                end
-            end
-
-            if path_mut == path_root then -- Should break once :h is run all the way to the root of the fs
+            local name, type = uv.fs_scandir_next(handle)
+            if not name then
                 break
+            end
+
+            local abs_path = M.path_combine(_path, name)
+            type = type or (uv.fs_stat(abs_path) or {}).type
+
+            if type == "file" then
+                if name:find("%.csproj$") then
+                    table.insert(found_projects, abs_path)
+                elseif name:find("%.sln$") then
+                    table.insert(found_solutions, abs_path)
+                end
+            elseif type == "directory" then
+                search_directory(abs_path)
             end
         end
     end
+
+    search_directory(root)
 
     return found_solutions, found_projects
 end
@@ -262,6 +275,9 @@ function M.resolve_project(ppn, projects)
     return nil
 end
 
+--- @param text_arr string[]
+--- @param width integer
+--- @return string[]
 function M.center_align(text_arr, width)
     local numspaces = {}
     for _, line in pairs(text_arr) do
