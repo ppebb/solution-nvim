@@ -13,6 +13,7 @@ local DEFAULT = {
     nuget = {
         take = 10,
     },
+    root_markers = {},
 }
 
 function M.init(path)
@@ -20,7 +21,7 @@ function M.init(path)
         return
     end
 
-    local found_solutions, found_projects = utils.search_files(path)
+    local found_solutions, found_projects = utils.search_files(path, M.config.root_markers)
 
     if not found_solutions and not found_projects then
         return

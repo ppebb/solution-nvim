@@ -11,6 +11,9 @@ local projects = require("solution").projects
 --- @field text string
 --- @field xml table
 --- @field dependencies Dependency[]
+--- @field populated boolean
+--- @field output_root? string
+--- @field output_dll? string
 local M = {}
 M.__index = M
 
@@ -27,8 +30,11 @@ function M.new_from_file(path)
     self.path = vim.fn.fnamemodify(path, ":p")
     self.text = utils.file_read_all_text(path)
     self.dependencies = {}
-
+    self.populated = false
+    self.output_root = nil
+    self.output_dll = nil
     self:refresh_xml()
+    self:populate_output()
 
     projects[self.path] = self
 
@@ -178,6 +184,11 @@ function M.new_from_sln(sln, first_line)
     if projects[self.path] then
         return projects[self.path]
     end
+
+    self.populated = false
+    self.output_dll = nil
+    self.output_root = nil
+    self:populate_output()
 
     projects[self.path] = self
 
@@ -485,6 +496,35 @@ function M:remove_dependency(dep, cb)
             nil
         )
     end
+end
+
+-- This is performed asynchronously upon project creation
+function M:populate_output()
+    utils.spawn_proc(
+        "dotnet",
+        { "msbuild", self.path, "-getProperty:OutputPath", "-getProperty:TargetExt", "-getProperty:AssemblyName" },
+        nil,
+        nil,
+        function(code, _, stdout_agg, stderr_agg)
+            if code ~= 0 or stdout_agg:find("error") then
+                error(
+                    string.format(
+                        "Unable to determine build output for project '%s', %s",
+                        self.name,
+                        stdout_agg .. stderr_agg
+                    )
+                )
+
+                return
+            end
+
+            local res = vim.json.decode(stdout_agg)
+
+            self.populated = true
+            self.output_root = vim.fn.fnamemodify(res.OutputPath, ":p")
+            self.output_dll = string.format("%s%s%s", self.output_root, res.AssemblyName, res.TargetExt)
+        end
+    )
 end
 
 return M
