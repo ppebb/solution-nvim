@@ -19,20 +19,25 @@ M.__index = M
 --- @param path string
 --- @return ProjectFile|nil
 function M.new_from_file(path)
+    if not path or not path:find("%.csproj$") then
+        return nil
+    end
+
+    local path_full = vim.fn.fnamemodify(path, ":p")
     if projects[path] then
         return projects[path]
     end
 
-    if not utils.file_exists(path) then
+    if not utils.file_exists(path_full) then
         return nil
     end
 
     --- @type ProjectFile
     local self = setmetatable({}, M)
 
-    self.name = vim.fn.fnamemodify(path, ":t")
-    self.root = vim.fn.fnamemodify(path, ":p:h")
-    self.path = vim.fn.fnamemodify(path, ":p")
+    self.name = vim.fn.fnamemodify(path_full, ":t")
+    self.root = vim.fn.fnamemodify(path_full, ":h")
+    self.path = path_full
     self.dependencies = {}
     self.populated = false
     self.output_root = nil
@@ -40,7 +45,7 @@ function M.new_from_file(path)
     self:refresh_xml()
     self:populate_output()
 
-    projects[self.path] = self
+    projects[path_full] = self
 
     return self
 end
@@ -89,12 +94,21 @@ local solution_project_type = {
     shared_project = 6,
 }
 
+--- Returns project file if it already exists and has been parsed, otherwise
+--- mutates self
+--- @return ProjectFile|nil
 function M:parse_first_project_line(first_line)
     local project_type_guid, project_name, relative_path, project_guid = first_line:match(CRACK_PROJECT_LINE)
     relative_path = utils.os_path(relative_path)
-    self.path = vim.fn.fnamemodify(relative_path, ":p")
+    local full_path = vim.fn.fnamemodify(relative_path, ":p")
+
+    if projects[full_path] then
+        return projects[full_path]
+    end
+
+    self.path = full_path
     self.name = project_name .. ".csproj"
-    self.root = vim.fn.fnamemodify(self.path, ":p:h")
+    self.root = vim.fn.fnamemodify(full_path, ":h")
     self.project_guid = project_guid
 
     if
@@ -127,10 +141,16 @@ function M:parse_first_project_line(first_line)
     else
         self.project_type = solution_project_type.unknown
     end
+
+    return nil
 end
 
+--- @return ProjectFile|nil
 function M:parse(slnfile, first_line)
-    self:parse_first_project_line(first_line)
+    local project = self:parse_first_project_line(first_line)
+    if project then
+        return project
+    end
 
     local line
     while true do
@@ -171,7 +191,7 @@ function M:parse(slnfile, first_line)
 
     self:refresh_xml()
 
-    return self
+    return nil
 end
 
 --- @class ProjectFile
@@ -181,13 +201,12 @@ end
 --- @param first_line string
 --- @return ProjectFile
 function M.new_from_sln(sln, first_line)
-    -- TODO: Avoid reparsing the entire project entry if the project already exists
     local self = setmetatable({}, M)
 
-    self:parse(sln, first_line)
-
-    if projects[self.path] then
-        return projects[self.path]
+    -- This checks if the project already exists
+    local project = self:parse(sln, first_line)
+    if project then
+        return project
     end
 
     self.populated = false

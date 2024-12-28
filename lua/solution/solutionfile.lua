@@ -52,7 +52,7 @@ end
 --- @param path string
 --- @return SolutionFile|nil
 function M.new(path)
-    if not path then
+    if not path or not path:find("%.sln$") then
         return nil
     end
 
@@ -61,12 +61,19 @@ function M.new(path)
         return slns[path_full]
     end
 
+    if not utils.file_exists(path_full) then
+        return nil
+    end
+
     local self = setmetatable({}, M)
 
     -- Opened a solution file
     self.name = vim.fn.fnamemodify(path, ":t")
     self.root = vim.fn.fnamemodify(path, ":p:h")
     self.path = path_full
+    -- The file is guaranteed to exist, barring something incrediblt odd
+    -- happening the file should read
+    ---@diagnostic disable-next-line: assign-type-mismatch
     self.text = utils.file_read_all_text(path)
     self.projects = {}
     self.current_line = 1
