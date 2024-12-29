@@ -6,10 +6,14 @@ local sln_open_textmenu = require("solution.ui.solution_menu")
 
 local M = {}
 
+--- @class SolutionNvimOnAttachOpts
+--- @field menu_key? string
+--- @field right_click_key? string
+
 --- @param bufnr integer
---- @param key string|nil
-function M.on_attach(bufnr, key)
-    api.nvim_buf_set_keymap(bufnr, "n", key or "<leader>s", "", {
+--- @param opts? SolutionNvimOnAttachOpts|nil
+function M.on_attach(bufnr, opts)
+    api.nvim_buf_set_keymap(bufnr, "n", (opts and opts.menu_key) or "<leader>s", "", {
         desc = "Opens the relevant solution-nvim menu for the current node",
         noremap = true,
         nowait = true,
@@ -25,6 +29,20 @@ function M.on_attach(bufnr, key)
                 project_open_textmenu(utils.resolve_project(node.absolute_path))
             elseif node.absolute_path:find("%.sln") then
                 sln_open_textmenu(utils.resolve_solution(node.absolute_path))
+            end
+        end,
+    })
+
+    api.nvim_buf_set_keymap(bufnr, "n", (opts and opts.right_click_key) or "<leader>r", "", {
+        desc = "Opens an action menu akin to right-clicking in other IDEs",
+        noremap = true,
+        nowait = true,
+        callback = function()
+            --- @type Node
+            local node = ntapi.tree.get_node_under_cursor()
+
+            if not node then
+                return
             end
         end,
     })

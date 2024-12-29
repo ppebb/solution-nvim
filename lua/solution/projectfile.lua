@@ -1,7 +1,8 @@
-local xml2lua = require("xml2lua.xml2lua")
+local data_manager = require("solution.data_manager")
 local handler = require("xml2lua.xmlhandler.tree")
 local log = require("solution.log")
 local utils = require("solution.utils")
+local xml2lua = require("xml2lua.xml2lua")
 local projects = require("solution").projects
 
 --- @class ProjectFile
@@ -15,6 +16,17 @@ local projects = require("solution").projects
 --- @field output_dll? string
 local M = {}
 M.__index = M
+
+function M:shared_ctor_ending()
+    self.populated = false
+    self.output_root = nil
+    self.output_dll = nil
+    self:refresh_xml()
+    self:populate_output()
+
+    projects[self.path] = self
+    data_manager.set_default_project(self)
+end
 
 --- @param path string
 --- @return ProjectFile|nil
@@ -38,14 +50,8 @@ function M.new_from_file(path)
     self.name = vim.fn.fnamemodify(path_full, ":t")
     self.root = vim.fn.fnamemodify(path_full, ":h")
     self.path = path_full
-    self.dependencies = {}
-    self.populated = false
-    self.output_root = nil
-    self.output_dll = nil
-    self:refresh_xml()
-    self:populate_output()
 
-    projects[path_full] = self
+    self:shared_ctor_ending()
 
     return self
 end
@@ -209,12 +215,7 @@ function M.new_from_sln(sln, first_line)
         return project
     end
 
-    self.populated = false
-    self.output_dll = nil
-    self.output_root = nil
-    self:populate_output()
-
-    projects[self.path] = self
+    self:shared_ctor_ending()
 
     return self
 end

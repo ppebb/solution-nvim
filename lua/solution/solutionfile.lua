@@ -1,3 +1,4 @@
+local data_manager = require("solution.data_manager")
 local utils = require("solution.utils")
 local slns = require("solution").slns
 
@@ -94,6 +95,8 @@ function M.new(path)
     end
 
     slns[path_full] = self
+    data_manager.set_default_sln(self)
+
     return self
 end
 

@@ -80,16 +80,14 @@ function M.locate_root(path, root_markers)
 end
 
 --- @param path string
---- @param root_markers? string[]
 --- @return string[]|nil, string[]|nil
-function M.search_files(path, root_markers)
-    local found_projects = {}
-    local found_solutions = {}
-
-    local root = M.locate_root(path, root_markers)
-    if not root then
+function M.search_files(path)
+    if not path then
         return nil, nil
     end
+
+    local found_projects = {}
+    local found_solutions = {}
 
     local function search_directory(_path)
         local handle = uv.fs_scandir(_path)
@@ -118,7 +116,7 @@ function M.search_files(path, root_markers)
         end
     end
 
-    search_directory(root)
+    search_directory(vim.fn.fnamemodify(path, ":p"))
 
     return found_solutions, found_projects
 end
