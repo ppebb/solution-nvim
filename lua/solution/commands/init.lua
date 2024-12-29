@@ -1,4 +1,5 @@
 local api = vim.api
+local uv = vim.uv or vim.loop
 
 local M = {}
 
@@ -7,28 +8,62 @@ local M = {}
 --- @field func fun(opts: table)
 --- @field opts table?
 
-local commands = {
-    -- TODO: Autodetection of commands? May require file io to read all modules
-    -- in directory, in which case it's not happening
-    require("solution.commands.nuget_browser"),
-    require("solution.commands.project_add_local_dep"),
-    require("solution.commands.project_add_nuget_dep"),
-    require("solution.commands.project_add_project_ref"),
-    require("solution.commands.project_list_dependencies"),
-    require("solution.commands.project_menu"),
-    require("solution.commands.project_remove_dep"),
-    require("solution.commands.solution_add_project"),
-    require("solution.commands.solution_list_projects"),
-    require("solution.commands.solution_menu"),
-    require("solution.commands.solution_nvim_log"),
-    require("solution.commands.solution_nvim_register"),
-    require("solution.commands.solution_remove_project"),
-}
+local function commands_dir()
+    local fname, _ = debug.getinfo(1).source:gsub("@", "")
+    return vim.fn.fnamemodify(fname, ":h") -- no trailing slash
+end
+
+local function find_commands(dir)
+    local uv = vim.uv or vim.loop
+
+    local ret = {}
+
+    local handle, err_name, err_msg = uv.fs_scandir(dir)
+    if not handle then
+        error(string.format("Unable to access handle for %s to detect command modules, %s:%s", dir, err_name, err_msg))
+        return ret
+    end
+
+    while true do
+        local name, _ = uv.fs_scandir_next(handle)
+        if not name then
+            break
+        end
+
+        if name ~= "init.lua" then
+            table.insert(ret, name)
+        end
+    end
+
+    return vim.mpack.encode(ret)
+end
+
+local initialized = false
 
 function M.init()
-    for _, command in ipairs(commands) do
-        api.nvim_create_user_command(command.name, command.func, command.opts or {})
+    if initialized then
+        return
     end
+
+    initialized = true
+
+    uv.queue_work(
+        uv.new_work(
+            find_commands,
+            vim.schedule_wrap(function(ret)
+                if not ret then
+                    return
+                end
+
+                local files = vim.mpack.decode(ret)
+                for _, file in ipairs(files) do
+                    local command = require("solution.commands." .. vim.fn.fnamemodify(file, ":t:r"))
+                    api.nvim_create_user_command(command.name, command.func, command.opts or {})
+                end
+            end)
+        ),
+        commands_dir()
+    )
 end
 
 return M
