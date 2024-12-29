@@ -40,12 +40,16 @@ end
 local _root_markers = {
     "%.git",
     "%.sln$",
+    "%.csproj",
+    "%.editorconfig",
 }
 
 --- @param path string
 --- @param root_markers? string[]
 --- @return string|nil
 function M.locate_root(path, root_markers)
+    local ret = nil
+
     local real_markers = M.tbl_shallow_copy(_root_markers)
 
     if root_markers then
@@ -59,7 +63,9 @@ function M.locate_root(path, root_markers)
         path_prev = path_mut
         path_mut = vim.fn.fnamemodify(path_mut, ":h")
 
-        assert(path_prev ~= path_mut, "Reached filesystem root without encountering a root marker")
+        if path_prev == path_mut then
+            break
+        end
 
         local handle =
             assert(uv.fs_scandir(path_mut), "Unable to acquire handle for '%s' while searching for a root marker")
@@ -72,11 +78,14 @@ function M.locate_root(path, root_markers)
 
             for _, marker in ipairs(real_markers) do
                 if name:find(marker) then
-                    return M.path_combine(path_mut)
+                    ret = M.path_combine(path_mut)
                 end
             end
         end
     end
+
+    assert(ret, "Reached filesystem root without encountering a root marker")
+    return ret
 end
 
 --- @param path string
