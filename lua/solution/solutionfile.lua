@@ -1,3 +1,4 @@
+local alert = require("solution.ui.alert")
 local data_manager = require("solution.data_manager")
 local utils = require("solution.utils")
 local slns = require("solution").slns
@@ -10,6 +11,8 @@ local slns = require("solution").slns
 --- @field version number
 --- @field projects table<string, ProjectFile>
 --- @field current_line integer
+--- @field building boolean
+--- @field running boolean
 local M = {}
 M.__index = M
 
@@ -143,5 +146,35 @@ function M:remove_project(project, cb)
         end
     )
 end
+
+--- @param extra_args? string[]
+function M:build(output, extra_args)
+    if self.building then
+        alert.open({ string.format("Solution '%s' is already building.", self.name) })
+        return
+    end
+
+    self.building = true
+
+    utils.execute_dotnet_in_output(output, { "build", self.path }, extra_args, function() self.building = false end)
+end
+
+--- @param extra_args? string[]
+function M:run(output, extra_args)
+    if self.running then
+        alert.open({ string.format("Solution '%s' is already running.", self.name) })
+        return
+    end
+
+    self.running = true
+
+    utils.execute_dotnet_in_output(output, { "build", self.path }, extra_args, function() self.running = false end)
+end
+
+--- @param extra_args? string[]
+function M:clean(output, extra_args) utils.execute_dotnet_in_output(output, { "clean", self.path }, extra_args) end
+
+--- @param extra_args? string[]
+function M:restore(output, extra_args) utils.execute_dotnet_in_output(output, { "restore", self.path }, extra_args) end
 
 return M

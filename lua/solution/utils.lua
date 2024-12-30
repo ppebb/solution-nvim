@@ -211,6 +211,18 @@ function M.spawn_proc(cmd, args, onstdout, onstderr, onexit)
     end)
 end
 
+--- @param output table
+--- @param args string[]
+--- @param extra_args? string[]
+--- @param on_exit? function
+function M.execute_dotnet_in_output(output, args, extra_args, on_exit)
+    if extra_args then
+        vim.list_extend(args, extra_args)
+    end
+
+    output.run("dotnet", args, on_exit)
+end
+
 --- Checks if the provided project path is present within any solution
 --- @param slns table<string, SolutionFile>
 --- @param path string

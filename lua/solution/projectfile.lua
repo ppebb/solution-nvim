@@ -1,3 +1,4 @@
+local alert = require("solution.ui.alert")
 local data_manager = require("solution.data_manager")
 local handler = require("xml2lua.xmlhandler.tree")
 local log = require("solution.log")
@@ -14,6 +15,8 @@ local projects = require("solution").projects
 --- @field populated boolean
 --- @field output_root? string
 --- @field output_dll? string
+--- @field building boolean
+--- @field running boolean
 local M = {}
 M.__index = M
 
@@ -551,5 +554,35 @@ function M:populate_output()
         end
     )
 end
+
+--- @param extra_args? string[]
+function M:build(output, extra_args)
+    if self.building then
+        alert.open({ string.format("Project '%s' is already building.", self.name) })
+        return
+    end
+
+    self.building = true
+
+    utils.execute_dotnet_in_output(output, { "build", self.path }, extra_args, function() self.building = false end)
+end
+
+--- @param extra_args? string[]
+function M:run(output, extra_args)
+    if self.running then
+        alert.open({ string.format("Project '%s' is already running.", self.name) })
+        return
+    end
+
+    self.running = true
+
+    utils.execute_dotnet_in_output(output, { "build", self.path }, extra_args, function() self.running = false end)
+end
+
+--- @param extra_args? string[]
+function M:clean(output, extra_args) utils.execute_dotnet_in_output(output, { "clean", self.path }, extra_args) end
+
+--- @param extra_args? string[]
+function M:restore(output, extra_args) utils.execute_dotnet_in_output(output, { "restore", self.path }, extra_args) end
 
 return M
