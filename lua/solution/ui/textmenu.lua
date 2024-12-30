@@ -102,7 +102,16 @@ function M:register_autocmds()
 
             local old_row = self.old_pos and self.old_pos[1]
 
-            if (old_row and pos_row <= old_row and pextmark) or (not old_row and pextmark) or not nextmark then
+            if
+                pextmark
+                and (
+                    not nextmark
+                    or (old_row and pos_row <= old_row)
+                    or (not old_row and pextmark)
+                    -- HACK: This fixes an issue with skipping entries when they are only one line long
+                    or (pextmark and nextmark and (nextmark[2] - pextmark[2] <= 1))
+                )
+            then
                 api.nvim_win_set_cursor(self.winhl, { pextmark[2] + 1, pextmark[3] })
                 self.current_extid = pextmark[1]
             elseif nextmark then
