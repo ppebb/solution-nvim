@@ -1,3 +1,4 @@
+local api = vim.api
 local uv = vim.uv or vim.loop
 
 local M = {}
@@ -288,7 +289,7 @@ end
 function M.center_align(text_arr, width)
     local numspaces = {}
     for _, line in pairs(text_arr) do
-        table.insert(numspaces, math.floor((width - vim.api.nvim_strwidth(line)) / 2))
+        table.insert(numspaces, math.floor((width - api.nvim_strwidth(line)) / 2))
     end
 
     local centered = {}
@@ -331,6 +332,10 @@ function M.split_by_pattern(str, pattern)
 
     local old_pos = 1
     local pos, end_pos, capt = str:find(pattern)
+
+    if not pos then
+        return { str }
+    end
 
     while pos do
         if capt then
@@ -566,6 +571,21 @@ function M.word_wrap(str, width)
     end
 
     return lines
+end
+
+--- @param bufnr integer
+--- @return boolean
+function M.check_buf_visible(bufnr)
+    local tabpage = api.nvim_get_current_tabpage()
+    local wins = api.nvim_tabpage_list_wins(tabpage)
+
+    for _, win in ipairs(wins) do
+        if api.nvim_win_get_buf(win) == bufnr then
+            return true
+        end
+    end
+
+    return false
 end
 
 return M
