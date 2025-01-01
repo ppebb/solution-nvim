@@ -34,7 +34,7 @@ end
 --- @param path string
 --- @return ProjectFile|nil
 function M.new_from_file(path)
-    if not path or not path:find("%.csproj$") then
+    if not path or not utils.is_csproj(path) then
         return nil
     end
 

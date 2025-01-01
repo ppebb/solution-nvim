@@ -41,7 +41,7 @@ end
 local _root_markers = {
     "%.git",
     "%.sln$",
-    "%.csproj",
+    "%.csproj$",
     "%.editorconfig",
 }
 
@@ -115,9 +115,9 @@ function M.search_files(path)
             type = type or (uv.fs_stat(abs_path) or {}).type
 
             if type == "file" then
-                if name:find("%.csproj$") then
+                if M.is_csproj(name) then
                     table.insert(found_projects, abs_path)
-                elseif name:find("%.sln$") then
+                elseif M.is_sln(name) then
                     table.insert(found_solutions, abs_path)
                 end
             elseif type == "directory" then
@@ -168,6 +168,22 @@ function M.file_write_all_text(path, text)
     f:close()
 
     return true
+end
+
+--- @param path string
+--- @return boolean
+function M.is_sln(path)
+    local start, _ = path:find("%.sln$")
+
+    return start ~= nil
+end
+
+--- @param path string
+--- @return boolean
+function M.is_csproj(path)
+    local start, _ = path:find("%.csproj$")
+
+    return start ~= nil
 end
 
 --- @param cmd string
@@ -255,7 +271,7 @@ function M.resolve_solution(ssn, solutions)
         return by_name
     end
 
-    if fpath:find("%.sln") and M.file_exists(fpath) then
+    if M.is_sln(fpath) and M.file_exists(fpath) then
         local new = require("solution.solutionfile").new(fpath)
 
         -- Register the project, but only return it if we're not searching specifically within an array
@@ -283,7 +299,7 @@ function M.resolve_project(ppn, projects)
         return by_name
     end
 
-    if fpath:find("%.csproj") and M.file_exists(fpath) then
+    if M.is_csproj(fpath) and M.file_exists(fpath) then
         local new = require("solution.projectfile").new_from_file(fpath)
 
         -- Register the project, but only return it if we're not searching specifically within an array
@@ -481,7 +497,7 @@ function M.complete_projects(cmd_line, offset, cursor_pos, projects)
     local ret = M.tbl_map_to_arr(_projects, function(_, e) return e.name end)
 
     if #ret == 0 then
-        return M.complete_file(cmd_line, offset, cursor_pos, { "%.csproj" })
+        return M.complete_file(cmd_line, offset, cursor_pos, { "%.csproj$" })
     end
 
     return ret
@@ -496,7 +512,7 @@ function M.complete_solutions(cmd_line, offset, cursor_pos, solutions)
     local ret = M.tbl_map_to_arr(_slns, function(_, e) return e.name end)
 
     if #ret == 0 then
-        return M.complete_file(cmd_line, offset, cursor_pos, { "%.sln" })
+        return M.complete_file(cmd_line, offset, cursor_pos, { "%.sln$" })
     end
 
     return ret

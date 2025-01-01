@@ -6,8 +6,8 @@ return {
     name = name,
     func = function(opts)
         local fname = assert(opts.fargs[1], "A solution or project file must be provided as argument 1")
-        local is_csproj = fname:find("%.csproj")
-        local is_sln = fname:find("%.sln")
+        local is_csproj = utils.is_csproj(fname)
+        local is_sln = utils.is_sln(fname)
         assert(is_csproj or is_sln, "A solution or project file must be provided as argument 1")
 
         assert(utils.file_exists(fname), string.format("The file '%s' does not exist!", fname))
@@ -26,7 +26,7 @@ return {
     opts = {
         nargs = 1,
         complete = function(_, cmd_line, cursor_pos)
-            return utils.complete_file(cmd_line, #name + 2, cursor_pos, { "%.sln", "%.csproj" })
+            return utils.complete_file(cmd_line, #name + 2, cursor_pos, { "%.sln$", "%.csproj$" })
         end,
     },
 }

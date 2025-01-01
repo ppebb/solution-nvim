@@ -25,9 +25,9 @@ function M.on_attach(bufnr, opts)
                 return
             end
 
-            if node.absolute_path:find("%.csproj") then
+            if utils.is_csproj(node.absolute_path) then
                 project_open_textmenu(utils.resolve_project(node.absolute_path))
-            elseif node.absolute_path:find("%.sln") then
+            elseif utils.is_sln(node.absolute_path) then
                 sln_open_textmenu(utils.resolve_solution(node.absolute_path))
             end
         end,

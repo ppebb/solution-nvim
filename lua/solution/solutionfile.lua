@@ -56,7 +56,7 @@ end
 --- @param path string
 --- @return SolutionFile|nil
 function M.new(path)
-    if not path or not path:find("%.sln$") then
+    if not path or not utils.is_sln(path) then
         return nil
     end
 

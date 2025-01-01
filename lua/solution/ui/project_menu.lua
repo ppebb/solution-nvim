@@ -69,7 +69,7 @@ local function add_package(tm, project)
 end
 
 function _G.ProjectAddProjectRefCompletion(_, cmd_line, cursor_pos)
-    return utils.complete_file(cmd_line, 0, cursor_pos, { "%.csproj" })
+    return utils.complete_file(cmd_line, 0, cursor_pos, { "%.csproj$" })
 end
 
 --- @param tm Textmenu
