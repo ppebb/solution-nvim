@@ -546,7 +546,7 @@ function M:populate_output()
                 return
             end
 
-            local res = vim.json.decode(stdout_agg)
+            local res = vim.json.decode(stdout_agg).Properties
 
             self.populated = true
             self.output_root = vim.fn.fnamemodify(res.OutputPath, ":p")
