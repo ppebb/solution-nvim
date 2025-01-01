@@ -24,8 +24,8 @@ M.__index = M
 
 --- @class TextmenuEntry
 --- @field text string[]
---- @field expand string[]
---- @field data table Arbitrary data to hold in the entry for use with keymaps
+--- @field expand? string[]
+--- @field data? table Arbitrary data to hold in the entry for use with keymaps
 --- @field open? boolean
 
 --- @class TextmenuHeader
@@ -126,7 +126,7 @@ function M:register_autocmds()
 end
 
 --- @class KeymapOpts
---- --- @field noremap? boolean
+--- @field noremap? boolean
 --- @field nowait? boolean
 --- @field silent? boolean
 --- @field script? boolean
@@ -183,6 +183,10 @@ function M.new(instance, keymaps, nsname, filetype)
             if self.current_extid then
                 local entry = self.entry_by_extid[self.current_extid]
                 local ext = api.nvim_buf_get_extmark_by_id(self.bufnr, self.extns, self.current_extid, {})
+
+                if not entry.expand then
+                    return
+                end
 
                 local start_line = ext[1] + #entry.text
                 local end_line = start_line + #entry.expand
@@ -258,13 +262,13 @@ function M:render()
     end
 
     for _, entry in ipairs(self.entries) do
-        local ext_col = entry.text[1]:find("%S") - 1
+        local start = entry.text[1]:find("%S")
         local ext_row = self.current_line
 
         self:add_lines(entry.text)
 
-        if ext_col then
-            local ext_id = api.nvim_buf_set_extmark(self.bufnr, self.extns, ext_row, ext_col, {})
+        if start then
+            local ext_id = api.nvim_buf_set_extmark(self.bufnr, self.extns, ext_row, start - 1, {})
             self.entry_by_extid[ext_id] = entry
         end
     end
