@@ -262,6 +262,10 @@ function M.resolve_solution(ssn, solutions)
     local fpath = vim.fn.fnamemodify(ssn, ":p")
     local _solutions = solutions or require("solution").slns
 
+    if ssn:upper() == "DEFAULT" then
+        return require("solution.data_manager").get_defaults().sln
+    end
+
     if _solutions[fpath] then
         return _solutions[fpath]
     end
@@ -289,6 +293,10 @@ end
 function M.resolve_project(ppn, projects)
     local fpath = vim.fn.fnamemodify(ppn, ":p")
     local _projects = projects or require("solution").projects
+
+    if ppn:upper() == "DEFAULT" then
+        return require("solution.data_manager").get_defaults().project
+    end
 
     if _projects[fpath] then
         return _projects[fpath]
