@@ -17,7 +17,7 @@ return {
             if dependency.type == "Local" then
                 print(string.format("DLL Reference: %s, %s, %s", dependency.name, dependency.include, dependency.path))
             elseif dependency.type == "Nuget" then
-                print(string.format("Package Reference: %s, version %s", dependency.package, dependency.version))
+                print(string.format("Package Reference: %s, version %s", dependency.pkg, dependency.version))
             elseif dependency.type == "Project" then
                 print(string.format("Project Reference: %s, %s", dependency.name, dependency.path))
             end
