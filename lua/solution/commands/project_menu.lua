@@ -7,7 +7,7 @@ return {
     name = name,
     func = function(opts)
         local ppn = assert(opts.fargs[1], "A project file or name must be provided as argument 1")
-        local project = assert(utils.resolve_project(ppn), "No project of name '%s' was found!")
+        local project = assert(utils.resolve_project(ppn), string.format("No project of name '%s' was found!", ppn))
 
         project_open_textmenu(project)
     end,

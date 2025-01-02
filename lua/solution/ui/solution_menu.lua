@@ -27,13 +27,13 @@ local function make_entries(sln)
 
     if vim.tbl_count(sln.projects) == 0 then
         table.insert(ret, {
-            text = { "    No projects present" },
-            expand = {},
-            data = {},
+            text = { "    No projects present: (a)dd" },
         })
 
         return ret
     end
+
+    table.insert(ret, { text = { "    Solution Projects: (a)dd/(d)elete" }, skip = true })
 
     for _, project in pairs(sln.projects) do
         local expand = {}

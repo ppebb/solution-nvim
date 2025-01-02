@@ -26,6 +26,7 @@ M.__index = M
 --- @field text string[]
 --- @field expand? string[]
 --- @field data? table Arbitrary data to hold in the entry for use with keymaps
+--- @field skip? boolean
 --- @field open? boolean
 
 --- @class TextmenuHeader
@@ -267,7 +268,7 @@ function M:render()
 
         self:add_lines(entry.text)
 
-        if start then
+        if not entry.skip and start then
             local ext_id = api.nvim_buf_set_extmark(self.bufnr, self.extns, ext_row, start - 1, {})
             self.entry_by_extid[ext_id] = entry
         end

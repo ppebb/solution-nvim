@@ -24,28 +24,60 @@ end
 --- @param project ProjectFile
 --- @return TextmenuEntry[]
 local function make_entries(project)
-    local ret = {}
+    local ret = {
+        {
+            text = { "    Project Information:" },
+            skip = true,
+        },
+        {
+            text = { string.format("    Target Framework: %s", project.xml.Project.PropertyGroup.TargetFramework) },
+            skip = true,
+        },
+        {
+            text = { string.format("    Project Output: %s", vim.fn.fnamemodify(project.output_dll, ":~")) },
+            skip = true,
+        },
+        { text = { "" }, skip = true },
+    }
 
     if #project.dependencies == 0 then
         table.insert(ret, {
-            text = { "    No dependencies present" },
-            expand = {},
-            data = {},
+            text = { "    No dependencies present: (a)dd" },
         })
 
         return ret
     end
 
+    local nuget_header = false
+    local project_header = false
+    local local_header = false
+
+    table.insert(ret, { text = { "    Dependencies: (a)dd/(d)elete" }, skip = true })
     for _, dependency in ipairs(project.dependencies) do
         local text
         local expand = {}
 
         if dependency.type == "Nuget" then
-            text = string.format("    Package Dependency %s (%s)", dependency.name, dependency.version)
+            if not nuget_header then
+                table.insert(ret, { text = { "    Nuget Packages:" }, skip = true })
+                nuget_header = true
+            end
+
+            text = string.format("    Package %s (%s)", dependency.name, dependency.version)
         elseif dependency.type == "Project" then
-            text = string.format("    Project Dependency %s (%s)", dependency.name, dependency.rel_path)
+            if not project_header then
+                table.insert(ret, { text = { "    Project References:" }, skip = true })
+                project_header = true
+            end
+
+            text = string.format("    Project %s (%s)", dependency.name, dependency.rel_path)
         elseif dependency.type == "Local" then
-            text = string.format("    Local Dependency %s (%s)", dependency.name, dependency.path)
+            if not local_header then
+                table.insert(ret, { text = { "    Local Dependencies:" }, skip = true })
+                local_header = true
+            end
+
+            text = string.format("    %s (%s)", dependency.name, dependency.path)
         else
             error(string.format("Attempted to create entry for unknown dependency of type '%s'", dependency.type))
         end
