@@ -46,11 +46,11 @@ local function run(cmd, args, on_exit)
 
     append(string.format("%s %s", cmd, table.concat(args, " ")))
     append("")
-    utils.spawn_proc(cmd, args, append, append, function()
+    utils.spawn_proc(cmd, args, append, append, function(code, signal, stdout_agg, stderr_agg)
         append("")
 
         if on_exit then
-            on_exit()
+            on_exit(code, signal, stdout_agg, stderr_agg)
         end
     end)
 end
