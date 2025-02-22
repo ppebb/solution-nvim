@@ -15,6 +15,7 @@ local DEFAULT = {
         take = 10,
     },
     root_markers = {},
+    output = require("solution.output.qf"),
 }
 
 function M.init(path)
