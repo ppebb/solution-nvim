@@ -340,7 +340,7 @@ function M:set_xml() return utils.file_write_all_text(self.path, xml2lua.toXml(s
 
 --- @param package_name string
 --- @param version? string
---- @param cb fun(success: boolean, message: string|nil, code: integer?)
+--- @param cb fun(success: boolean, message?: string, code?: integer)
 function M:add_nuget_dep(package_name, version, cb)
     local args = { "add", self.path, "package", package_name }
 
@@ -366,7 +366,7 @@ function M:add_nuget_dep(package_name, version, cb)
 end
 
 --- @param package_name string
---- @param cb fun(success: boolean, message: string|nil, code: integer?)
+--- @param cb fun(success: boolean, message?: string, code?: integer)
 function M:remove_nuget_dep(package_name, cb)
     -- TODO: check reference exists before invoking dotnet
 
@@ -465,7 +465,7 @@ function M:remove_local_dep(dll_name)
 end
 
 --- @param project ProjectFile
---- @param cb fun(success: boolean, message: string|nil, code: integer?)
+--- @param cb fun(success: boolean, message?: string, code?: integer)
 function M:add_project_reference(project, cb)
     utils.spawn_proc(
         "dotnet",
@@ -486,7 +486,7 @@ function M:add_project_reference(project, cb)
 end
 
 --- @param project ProjectFile
---- @param cb fun(success: boolean, message: string|nil, code: integer?)
+--- @param cb fun(success: boolean, message?: string, code?: integer)
 function M:remove_project_reference(project, cb)
     utils.spawn_proc(
         "dotnet",
@@ -507,7 +507,7 @@ function M:remove_project_reference(project, cb)
 end
 
 --- @param dep Dependency
---- @param cb fun(success: boolean, message: string|nil, code: integer?)
+--- @param cb fun(success: boolean, message?: string, code?: integer)
 function M:remove_dependency(dep, cb)
     if dep.type == "Nuget" then
         self:remove_nuget_dep(dep.pkg, cb)

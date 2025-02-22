@@ -104,7 +104,7 @@ function M.new(path)
 end
 
 --- @param project ProjectFile
---- @param cb fun(success: boolean, message: string|nil, code: integer?)
+--- @param cb fun(success: boolean, message?: string, code?: integer)
 function M:add_project(project, cb)
     utils.spawn_proc(
         "dotnet",
@@ -125,7 +125,7 @@ function M:add_project(project, cb)
 end
 
 --- @param project ProjectFile
---- @param cb fun(success: boolean, message: string|nil, code: integer?)
+--- @param cb fun(success: boolean, message?: string, code?: integer)
 function M:remove_project(project, cb)
     utils.spawn_proc(
         "dotnet",

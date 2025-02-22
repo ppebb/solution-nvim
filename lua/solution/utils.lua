@@ -188,9 +188,9 @@ end
 
 --- @param cmd string
 --- @param args string[]
---- @param onstdout? fun(err: string?, data: string?)|nil
---- @param onstderr? fun(err: string?, data: string?)|nil
---- @param onexit? fun(code: integer, signal: integer, stdout_agg: string, stderr_agg: string)|nil
+--- @param onstdout? fun(err?: string, data?: string)
+--- @param onstderr? fun(err?: string, data?: string)
+--- @param onexit? fun(code: integer, signal: integer, stdout_agg: string, stderr_agg: string)
 function M.spawn_proc(cmd, args, onstdout, onstderr, onexit)
     local stdout = uv.new_pipe()
     local stderr = uv.new_pipe()
@@ -230,7 +230,7 @@ end
 --- @param output table
 --- @param args string[]
 --- @param extra_args? string[]
---- @param on_exit? function
+--- @param on_exit? fun(code: integer, signal: integer, stdout_agg: string, stderr_agg: string)
 function M.execute_dotnet_in_output(output, args, extra_args, on_exit)
     if extra_args then
         vim.list_extend(args, extra_args)
