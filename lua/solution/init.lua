@@ -1,4 +1,5 @@
 local data_manager = require("solution.data_manager")
+local log = require("solution.log")
 local utils = require("solution.utils")
 
 local M = {}
@@ -121,6 +122,49 @@ function M.setup(config)
             },
         })
     end
+end
+
+--- @param path string
+--- @param args string[]
+--- @param cb fun(success: boolean, message?: string, code?: integer, slns?: SolutionFile[], projects?: ProjectFile[])
+function M.new_from_template(path, args, cb)
+    local _args = { "new" }
+
+    vim.list_extend(_args, args)
+    vim.list_extend(_args, { "-o", path })
+
+    utils.spawn_proc("dotnet", _args, nil, nil, function(code, _, stdout_agg, stderr_agg)
+        if code ~= 0 or not stdout_agg:find("was created successfully") then
+            log.log("error", string.format("Failed to create template %s %s%s", args[1], stdout_agg, stderr_agg))
+
+            if cb then
+                cb(false, (stdout_agg .. stderr_agg):gsub("\n", ""), code)
+            end
+        else
+            -- Register whatever the template created
+            local found_solutions, found_projects = utils.search_files(path)
+            local ret_solutions
+            local ret_projects
+
+            if found_solutions then
+                ret_solutions = {}
+
+                for _, sln in ipairs(found_solutions) do
+                    table.insert(ret_solutions, require("solution.solutionfile").new(sln))
+                end
+            end
+
+            if found_projects then
+                ret_projects = {}
+
+                for _, project in ipairs(found_projects) do
+                    table.insert(ret_projects, require("solution.projectfile").new_from_file(project))
+                end
+            end
+
+            cb(true, nil, code, ret_solutions, ret_projects)
+        end
+    end)
 end
 
 return M
