@@ -105,11 +105,13 @@ local solution_project_type = {
 
 --- Returns project file if it already exists and has been parsed, otherwise
 --- mutates self
+--- @param slnfile SolutionFile
+--- @param first_line string
 --- @return ProjectFile|nil
-function M:parse_first_project_line(first_line)
+function M:parse_first_project_line(slnfile, first_line)
     local project_type_guid, project_name, relative_path, project_guid = first_line:match(CRACK_PROJECT_LINE)
     relative_path = utils.os_path(relative_path)
-    local full_path = vim.fn.fnamemodify(relative_path, ":p")
+    local full_path = utils.path_combine(slnfile.root, relative_path)
 
     if projects[full_path] then
         return projects[full_path]
@@ -154,9 +156,11 @@ function M:parse_first_project_line(first_line)
     return nil
 end
 
+--- @param slnfile SolutionFile
+--- @param first_line string
 --- @return ProjectFile|nil
 function M:parse(slnfile, first_line)
-    local project = self:parse_first_project_line(first_line)
+    local project = self:parse_first_project_line(slnfile, first_line)
     if project then
         return project
     end
@@ -316,13 +320,20 @@ function M:refresh_xml(noread)
         }
         local parser = xml2lua.parser(h)
 
+        local project_text = utils.file_read_all_text(self.path)
+
+        if not project_text then
+            print(string.format("Failure to read text for project %s", self.name))
+            return
+        end
+
         local success = xpcall(parser.parse, function(e)
             log.log(
                 "error",
                 string.format("Error parsing project file '%s': %s\n%s\n", self.path, e, debug.traceback())
             )
             print(string.format("Error parsing project file '%s', see :SolutionLog for more info!", self.path))
-        end, parser, utils.remove_bom(table.concat(utils.file_read_all_text(self.path), "\n")))
+        end, parser, utils.remove_bom(table.concat(project_text, "\n")))
 
         if success then
             self.xml = h.root
