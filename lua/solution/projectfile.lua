@@ -25,6 +25,12 @@ function M:shared_ctor_ending()
     self.output_root = nil
     self.output_dll = nil
     self:refresh_xml()
+
+    if not utils.file_exists(self.path) then
+        print(string.format("Failure to populate output for project '%s'. Project does not exist on disk!", self.path))
+        return
+    end
+
     self:populate_output()
 
     projects[self.path] = self
