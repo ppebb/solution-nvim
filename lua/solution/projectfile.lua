@@ -10,6 +10,7 @@ local projects = require("solution").projects
 --- @field name string
 --- @field root string
 --- @field path string
+--- @field files string[]
 --- @field xml table
 --- @field dependencies Dependency[]
 --- @field populated boolean
@@ -55,6 +56,7 @@ function M.new_from_file(path)
 
     --- @type ProjectFile
     local self = setmetatable({}, M)
+    self.files = {}
 
     self.name = vim.fn.fnamemodify(path_full, ":t")
     self.root = vim.fn.fnamemodify(path_full, ":h")
@@ -221,6 +223,7 @@ end
 --- @return ProjectFile
 function M.new_from_sln(sln, first_line)
     local self = setmetatable({}, M)
+    self.files = {}
 
     -- This checks if the project already exists
     local project = self:parse(sln, first_line)
